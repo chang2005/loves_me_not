@@ -49,8 +49,9 @@ _REDACT_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"(?<!\d)\d{16,19}(?!\d)"), "[卡号已打码]"),
     # 邮箱
     (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "[邮箱已打码]"),
-    # 微信号 / QQ 号声明
-    (re.compile(r"(?:微信|weixin|wechat|vx|VX|qq|QQ)\s*[:：]?\s*[A-Za-z0-9_-]{5,20}"), "[账号已打码]"),
+    # 微信号 / QQ 号声明（微信号允许中文、字母、数字、下划线、减号）
+    (re.compile(r"(?:微信|weixin|wechat|vx|VX|qq|QQ)\s*(?:号|ID|id)?\s*[:：]?\s*"
+                r"[A-Za-z0-9_\-\u4e00-\u9fa5]{5,24}"), "[账号已打码]"),
     # 详细地址特征
     (re.compile(r"[\u4e00-\u9fa5]{2,8}(?:省|市|区|县)[\u4e00-\u9fa5]{0,12}(?:路|街|道|巷)\d*号?"),
      "[地址已打码]"),

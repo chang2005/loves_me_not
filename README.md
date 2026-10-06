@@ -49,20 +49,38 @@
 无需安装任何第三方依赖，只需要 Python 3.9+（纯标准库实现）。
 
 ```bash
-# 1. 分析一份聊天记录，生成 HTML 报告
-python -m loves_me_not analyze "path/to/chat.txt" --me "我的昵称" -o out/report.html
-
-# 2. 如果导出文件里有两个以上说话人，或用昵称无法确定「我」
-python -m loves_me_not analyze "path/to/chat.csv" --me "阿澈" --format csv
-
-# 3. 先只看解析结果，确认发言人识别对不对
+# 1. 先核对解析结果（强烈建议：输入错了，分数就没有意义）
 python -m loves_me_not inspect "path/to/chat.txt"
 
-# 4. 输出机器可读的 JSON（便于二次开发）
-python -m loves_me_not analyze "path/to/chat.txt" --me "阿澈" --json out/result.json
+# 2. 分析并生成报告
+python -m loves_me_not analyze "path/to/chat.txt" --me "我的昵称" --peer "TA的昵称" \
+    -o out/report.html --json out/result.json
+
+# 3. 要把报告发给别人看时，先打码
+python -m loves_me_not analyze "path/to/chat.txt" --me "我" --peer "TA" --redact -o out/report.html
 ```
 
+`analyze` 会打印分数、等级、可信度，以及在控制台里列出所有数据说明；
+报告写到 `-o` 指定的路径（默认 `out/report.html`）。
+
+**参数一览**
+
+| 参数 | 说明 |
+|---|---|
+| `--me` | 「我」的昵称。**不指定时会按说话人出现顺序推断，并在报告顶部警告你核对**——搞反了整份结论会颠倒。 |
+| `--peer` | 「TA」的昵称。记录里有 3 个以上说话人（群聊）时建议指定。 |
+| `-o, --output` | 报告输出路径，默认 `out/report.html`。 |
+| `--json` | 额外输出机器可读的完整结果（维度分、权重、贡献、分段趋势、证据）。 |
+| `--redact` | 对报告中的手机号、身份证、卡号、邮箱、账号、地址做打码。 |
+| `--format` | `auto`（默认）/ `text` / `csv`，强制指定输入格式。 |
+
+**退出码**：`0` 成功；`2` 表示解析失败或参数有误（例如文件不是聊天记录导出、
+找不到你指定的说话人、记录里没有任何有效消息）。**失败时不会生成任何报告**，
+更不会编一份出来。
+
 Windows 上如果 `python` 不可用，试 `py -m loves_me_not ...`。
+
+**只想看看它长什么样？** `demo/` 里有用合成数据生成的示例报告，双击就能打开。
 
 ---
 
@@ -190,18 +208,19 @@ QQ 导出常见的方括号格式也支持：
 
 ```text
 loves-me-not/
-├── SKILL.md                 # Skill 定义（给 Agent 读的接口说明）
+├── SKILL.md                 # Skill 定义（给 Agent 读的接口说明与使用边界）
 ├── README.md
 ├── loves_me_not/
 │   ├── __init__.py
 │   ├── __main__.py          # CLI：analyze / inspect
 │   ├── parser.py            # 容错解析：txt / csv → Message[]
 │   ├── metrics.py           # 八个维度的计算
-│   ├── lexicon.py           # 情感词典 + 亲昵称呼 + 疑问词
-│   ├── scoring.py           # 可解释打分与等级结论
-│   └── report.py            # 单文件 HTML 生成
+│   ├── lexicon.py           # 情感词典 + 亲昵称呼 + 疑问词（可审计、可替换）
+│   ├── scoring.py           # 可解释打分、等级结论、安慰文案
+│   └── report.py            # 单文件 HTML / JSON 生成
 ├── samples/                 # 合成的示例数据（非真实记录）
-└── tests/                   # 单元测试
+├── demo/                    # 由示例数据生成的成品报告
+└── tests/                   # 99 项单元测试
 ```
 
 ## 🧪 测试
@@ -209,6 +228,14 @@ loves-me-not/
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+测试里有几条是**守住产品承诺的护栏**，改动核心逻辑时不要删：
+
+- 无信息的维度必须被剔除，而不是当成 0 分（含「表情线索不可得」的情形）
+- 样本不足必须降级为「样本不足」，不得输出强结论
+- 更暖的记录必须得到更高的分（打分方向不能反）
+- 报告必须自包含：不含 `http(s)://`、`<script>`、`src=`、CDN 引用
+- 包内不许出现任何网络或子进程依赖（守住「全本地」）
 
 ## 📜 许可
 

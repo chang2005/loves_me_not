@@ -289,8 +289,38 @@ class TestRedaction(unittest.TestCase):
     def test_email_redacted(self):
         self.assertNotIn("a@b.com", report.redact("邮箱 a@b.com"))
 
+    def test_bank_card_redacted(self):
+        self.assertNotIn("6222021234567890123", report.redact("卡号 6222021234567890123"))
+
+    def test_wechat_id_redacted(self):
+        for text in ("微信是 wechat_cyh123", "微信号：cyh_wechat99", "微信号：小澈1990"):
+            self.assertNotIn("cyh", report.redact(text).lower())
+            self.assertIn("打码", report.redact(text))
+
+    def test_qq_number_redacted(self):
+        self.assertNotIn("389574063", report.redact("QQ: 389574063"))
+
+    def test_address_redacted(self):
+        self.assertNotIn("文三路123号", report.redact("我住杭州市西湖区文三路123号"))
+
     def test_normal_text_untouched(self):
-        self.assertEqual(report.redact("今天天气不错"), "今天天气不错")
+        for text in ("今天天气不错", "我们去公园吧", "晚安", "你吃饭了吗"):
+            self.assertEqual(report.redact(text), text)
+
+    def test_redaction_applied_to_report_evidence(self):
+        """端到端：带 PII 的记录经 --redact 后，报告里不能残留敏感串。"""
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n我的手机号13812345678 记一下\n\n"
+            "2023-01-01 09:01:00 阿澈\n好 我的邮箱 a@b.com\n"
+        )
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html_plain = report.build_html(analysis, result, conv.report)
+        self.assertIn("13812345678", html_plain)  # 未脱敏时应该在（证明测试有效）
+        report._apply_redaction(analysis, result)
+        html_red = report.build_html(analysis, result, conv.report)
+        self.assertNotIn("13812345678", html_red)
+        self.assertNotIn("a@b.com", html_red)
 
 
 class TestReport(unittest.TestCase):
@@ -379,6 +409,48 @@ class TestReport(unittest.TestCase):
         self.assertIn("dimensions", payload)
         self.assertEqual(len(payload["dimensions"]), 8)
         self.assertIsInstance(payload["score"]["total"], int)
+
+
+class TestNoNetwork(unittest.TestCase):
+    """守住「全本地处理」这条红线：包内不许出现任何网络/子进程调用。"""
+
+    FORBIDDEN = (
+        "urllib", "socket", "requests", "httpx", "aiohttp", "http.client",
+        "ftplib", "smtplib", "telnetlib", "webbrowser", "subprocess",
+        "openai", "anthropic", "dashscope", "zhipuai",
+    )
+
+    def test_package_imports_nothing_networked(self):
+        import ast
+        pkg = ROOT / "loves_me_not"
+        offenders: list[str] = []
+        for py in sorted(pkg.glob("*.py")):
+            tree = ast.parse(py.read_text(encoding="utf-8"), filename=str(py))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    names = [a.name for a in node.names]
+                elif isinstance(node, ast.ImportFrom):
+                    names = [node.module or ""]
+                else:
+                    continue
+                for name in names:
+                    root = name.split(".")[0].lower()
+                    if root in self.FORBIDDEN:
+                        offenders.append(f"{py.name}: {name}")
+        self.assertEqual(offenders, [], f"发现网络/子进程依赖：{offenders}")
+
+    def test_no_network_urls_in_source(self):
+        pkg = ROOT / "loves_me_not"
+        for py in sorted(pkg.glob("*.py")):
+            text = py.read_text(encoding="utf-8")
+            for m in re.finditer(r"https?://[^\s\"')]+", text):
+                # 只允许出现在注释里的说明性链接
+                line_start = text.rfind("\n", 0, m.start()) + 1
+                line = text[line_start: text.find("\n", m.start())]
+                self.assertTrue(
+                    line.lstrip().startswith("#") or '"""' in line or "'''" in line,
+                    f"{py.name} 正文里出现 URL：{m.group(0)}",
+                )
 
 
 class TestEndToEndCli(unittest.TestCase):
