@@ -404,8 +404,8 @@ class TestReportIntegration(unittest.TestCase):
         cls.html = report.build_html(cls.analysis, cls.result, cls.conv.report)
 
     def test_new_sections_present(self):
-        for token in ("五个量化指标", "聊天足迹", "聊天日历热力图",
-                      "你们都在聊什么", "是一个怎样的人", "关键节点"):
+        for token in ("量化指标", "聊天足迹", "日历热力图", "双方投入度",
+                      "话题词云", "是怎样的人", "关键节点"):
             self.assertIn(token, self.html, f"缺少区块：{token}")
 
     def test_formulas_are_shown(self):
@@ -418,8 +418,18 @@ class TestReportIntegration(unittest.TestCase):
 
     def test_still_self_contained(self):
         low = self.html.lower()
-        for bad in ("http://", "https://", "<script", "src=", "@import"):
+        for bad in ("http://", "https://", "src=", "@import"):
             self.assertNotIn(bad, low, f"新增区块引入了外部引用：{bad}")
+        # 唯一允许的脚本：内联的章节导航高亮（无 URL、无外部 src）
+        self.assertEqual(low.count("<script"), 1)
+
+    def test_gauge_is_a_progress_ring(self):
+        """仪表盘必须是环形进度条：单个 dasharray 圆，无指针、无刻度溢出。"""
+        self.assertIn("stroke-dasharray", self.html)
+        self.assertIn('class="gauge"', self.html)
+        # 旧实现的特征：指针线 + 外圈刻度文字，都应当消失
+        self.assertNotIn("gauge-needle", self.html)
+        self.assertNotIn("_arc_path", self.html)
 
     def test_json_contains_new_data(self):
         payload = json.loads(report.build_json(self.analysis, self.result))
@@ -443,6 +453,15 @@ class TestReportIntegration(unittest.TestCase):
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
         self.assertIn("关键节点", html)
+
+    def test_nav_titles_adapt_to_peer_name(self):
+        """导航里的人名标题要跟着数据走，不能写死。"""
+        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        analysis = metrics.analyze(conv, "阿澈", "我")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertIn("我 是怎样的人", html)
+        self.assertNotIn("阿澈 是怎样的人", html)
 
 
 if __name__ == "__main__":

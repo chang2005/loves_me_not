@@ -23,23 +23,38 @@ from .insights import DayStat, Persona, TopicWord
 from .timeline import Footprint, HourBucket, MonthStat
 
 # --------------------------------------------------------------------------- #
-# 调色板
+# 调色板：**这里是全项目颜色的唯一来源**
 # --------------------------------------------------------------------------- #
 
 PALETTE = {
-    "ink": "#3d3a3f",
-    "ink_soft": "#7b7480",
-    "ink_faint": "#a9a2ae",
-    "line": "#ece6e8",
-    "peer": "#c96a8a",
-    "me": "#7fa8c9",
-    "accent": "#d9a441",
-    "good": "#7fb99a",
-    "warn": "#e0a06a",
+    # 底色与层次
+    "bg": "#f6f4f1",
+    "surface": "#ffffff",
+    "surface_alt": "#faf8f6",
+    "ink": "#2a2731",
+    "ink_soft": "#5f5966",
+    "ink_faint": "#928c98",
+    "line": "#e7e2df",
+    "line_soft": "#f0ece8",
+    # 语义色
+    "peer": "#b4576f",        # 深玫瑰——代表 TA
+    "peer_soft": "#f3e4e8",
+    "me": "#4f7fa0",          # 雾蓝——代表我
+    "me_soft": "#e5edf4",
+    "accent": "#b07d34",
+    "accent_soft": "#f6eedd",
+    "good": "#4f8a6b",
+    "warn": "#b5793a",
+    # 结构（侧栏导航）
+    "nav_bg": "#221f28",
+    "nav_ink": "#cfc9d4",
+    "nav_ink_active": "#ffffff",
+    # 兼容旧键名（HTML 侧仍在用 card）
+    "card": "#ffffff",
 }
 
 #: 热力图色阶：由浅到深（时长 0 → 最长）
-HEAT_SCALE = ("#f0ecee", "#f6dfe6", "#eec2d1", "#dd9ab2", "#c96a8a", "#a8455f")
+HEAT_SCALE = ("#f0ecea", "#f0dde3", "#e2b9c5", "#d08ea2", "#b4576f", "#8e3d55")
 
 WEEKDAY_LABELS = ("一", "二", "三", "四", "五", "六", "日")
 MONTH_LABELS = ("1月", "2月", "3月", "4月", "5月", "6月",

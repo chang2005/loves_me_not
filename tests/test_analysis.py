@@ -380,19 +380,40 @@ class TestReport(unittest.TestCase):
         self.assertNotIn("**", self.html)
 
     def test_no_external_requests(self):
-        """单文件必须自包含：不能有任何 http(s) 引用、外链、CDN。"""
+        """单文件必须自包含：不能有任何 http(s) 引用、外链、CDN。
+
+        允许**一个内联** ``<script>``（章节导航的滚动高亮），
+        但它不得含任何 URL，也不得用 ``src=`` 引外部文件。
+        """
         low = self.html.lower()
-        for bad in ("http://", "https://", "<script", "src=", "@import", "cdn."):
+        for bad in ("http://", "https://", "src=", "@import", "cdn."):
             self.assertNotIn(bad, low, f"报告里出现了外部引用：{bad}")
+        # 脚本只允许内联且只有一个
+        self.assertEqual(low.count("<script"), 1)
+        self.assertIn("<script>", low)
 
     def test_has_charset_and_viewport(self):
         self.assertIn('<meta charset="utf-8">', self.html)
         self.assertIn("width=device-width", self.html)
 
+    def test_has_in_page_navigation(self):
+        """页面内导航：每个区块都有锚点，导航项与区块一一对应。"""
+        self.assertIn('class="nav"', self.html)
+        self.assertIn('class="layout"', self.html)
+        nav_count = self.html.count('class="nav-link"')
+        sec_count = self.html.count('class="section"')
+        self.assertGreaterEqual(nav_count, 10)
+        self.assertEqual(nav_count, sec_count, "导航项与区块数量必须一致")
+        # 每个 nav 链接的锚点都要真实存在
+        import re as _re
+        for href in _re.findall(r'class="nav-link" href="#([\w-]+)"', self.html):
+            self.assertIn(f'id="{href}"', self.html, f"锚点缺失：{href}")
+
     def test_contains_required_sections(self):
-        for token in ("情感投入指数", "八维雷达图", "互动趋势", "关键数据",
-                      "支撑结论的原话", "分数是怎么算出来的", "写在这里的话"):
-            self.assertIn(token, self.html)
+        for token in ("情感投入指数", "八维雷达", "互动趋势", "关键数据", "双方投入度",
+                      "原话与证据", "自己复核一遍", "分数是怎么算出来的", "写在这里的话",
+                      "量化指标", "聊天足迹", "日历热力图", "话题词云", "关键节点"):
+            self.assertIn(token, self.html, f"缺少区块：{token}")
 
     def test_has_all_charts(self):
         self.assertIn('class="gauge"', self.html)

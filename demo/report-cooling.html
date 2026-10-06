@@ -6,286 +6,539 @@
 <meta name="color-scheme" content="light">
 <meta name="robots" content="noindex, nofollow">
 <title>TA 到底爱不爱我 · 阿澈 × 我 · 58 分</title>
-<style>
-:root {
-  --bg: #fbf8f6; --card: #ffffff;
-  --ink: #3d3a3f; --ink-soft: #7b7480; --ink-faint: #a9a2ae;
-  --line: #ece6e8; --peer: #c96a8a; --me: #7fa8c9; --accent: #d9a441;
+<style>:root {
+  --bg: #f6f4f1;
+  --surface: #ffffff;
+  --surface-alt: #faf8f6;
+  --ink: #2a2731;
+  --ink-soft: #5f5966;
+  --ink-faint: #928c98;
+  --line: #e7e2df;
+  --line-soft: #f0ece8;
+  --peer: #b4576f;
+  --peer-soft: #f3e4e8;
+  --me: #4f7fa0;
+  --me-soft: #e5edf4;
+  --accent: #b07d34;
+  --accent-soft: #f6eedd;
+  --good: #4f8a6b;
+  --warn: #b5793a;
+  --nav-bg: #221f28;
+  --nav-ink: #cfc9d4;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(42, 39, 49, .04), 0 8px 24px -12px rgba(42, 39, 49, .14);
+  --shadow-nav: 0 10px 30px -12px rgba(34, 31, 40, .5);
+  --nav-w: 232px;
+  --fs-base: 15px;
 }
+
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; animation: none !important; }
+}
 body {
-  margin: 0; background: var(--bg); color: var(--ink);
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
                "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  font-size: 15px; line-height: 1.72;
+  font-size: var(--fs-base);
+  line-height: 1.72;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
-.wrap { max-width: 760px; margin: 0 auto; padding: 18px 16px 56px; }
-h1, h2, h3, h4 { line-height: 1.35; margin: 0 0 .5em; font-weight: 650; }
-h2 { font-size: 1.28rem; }
-h3 { font-size: 1.02rem; }
-h4 { font-size: .92rem; }
-p { margin: 0 0 .8em; }
-.tiny { font-size: .78rem; }
+h1, h2, h3, h4 { line-height: 1.32; margin: 0 0 .6em; font-weight: 650; letter-spacing: -.01em; }
+p { margin: 0 0 .85em; }
+img, svg { max-width: 100%; }
+.tiny { font-size: .775rem; line-height: 1.65; }
 .faint { color: var(--ink-faint); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .kicker {
-  font-size: .72rem; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--ink-faint); margin: 0 0 .35em;
+  font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 .4em; font-weight: 600;
 }
-section { margin: 0 0 26px; }
+
+/* ===================== 双栏骨架 ===================== */
+.layout { display: block; }
+
+.nav {
+  position: sticky; top: 0; z-index: 60;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-brand {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 16px 8px;
+}
+.brand-mark {
+  width: 26px; height: 26px; border-radius: 8px; flex: none;
+  background: linear-gradient(135deg, var(--peer), var(--accent));
+  display: grid; place-items: center;
+  color: #fff; font-size: 13px; font-weight: 700;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.brand-title { font-size: .88rem; font-weight: 660; }
+.brand-sub { font-size: .68rem; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.nav-list {
+  display: flex; gap: 4px; list-style: none; margin: 0;
+  padding: 0 12px 9px; overflow-x: auto; scrollbar-width: none;
+}
+.nav-list::-webkit-scrollbar { display: none; }
+/* 侧栏脚注只在桌面端出现；移动端隐藏，否则会夹在标签栏与正文之间 */
+.nav-foot { display: none; }
+.nav-link {
+  display: block; white-space: nowrap; text-decoration: none;
+  color: var(--ink-soft); font-size: .8rem; font-weight: 550;
+  padding: 6px 11px; border-radius: 99px; border: 1px solid transparent;
+  transition: background .18s, color .18s, border-color .18s;
+}
+.nav-link:hover { background: var(--surface); color: var(--ink); }
+.nav-link .nav-ico { margin-right: 4px; opacity: .85; }
+.nav-link.is-active {
+  background: var(--ink); color: #fff; border-color: var(--ink);
+}
+.nav-link.is-active .nav-ico { opacity: 1; }
+
+.main { padding: 20px 16px 60px; max-width: 100%; }
+
+/* ===================== 区块 ===================== */
+.section { margin: 0 0 40px; scroll-margin-top: 84px; }
+.section-head { margin: 0 0 14px; }
+.section-head h2 {
+  font-size: 1.22rem; margin: 0 0 .2em;
+  display: flex; align-items: center; gap: 9px;
+}
+.section-num {
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 2px 7px; border-radius: 6px; flex: none;
+}
+.section-desc { color: var(--ink-soft); font-size: .84rem; margin: 0; max-width: 68ch; }
+
 .card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-  padding: 18px 16px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow);
 }
+.card + .card { margin-top: 12px; }
+.card-flat { box-shadow: none; }
+
+/* ===================== 结论首屏 ===================== */
 .banner {
-  display: flex; flex-direction: column; gap: 6px;
-  background: #fdf6e9; border: 1px solid #f0dcb8; border-radius: 14px;
-  padding: 12px 14px; margin-bottom: 16px; font-size: .86rem; color: #8a6a2f;
+  display: flex; gap: 10px; border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 14px; font-size: .84rem;
+  line-height: 1.62; border: 1px solid transparent;
 }
-.banner strong { font-size: .95rem; }
-.verdict .verdict-grid { display: block; }
-.gauge-wrap { max-width: 340px; margin: 0 auto; }
+.banner-ico { flex: none; font-size: 1rem; line-height: 1.4; }
+.banner strong { display: block; margin-bottom: 2px; font-size: .9rem; }
+.banner-insufficient { background: #fdf7ec; border-color: #efdcbb; color: #8a6524; }
+.banner-assumed { background: #fdf1f4; border-color: #eecbd6; color: #8d4f62; }
+
+.verdict-grid { display: block; }
+.gauge-wrap { max-width: 300px; margin: 0 auto 6px; }
 svg.gauge { width: 100%; height: auto; display: block; }
-.verdict-text h1 { font-size: 1.7rem; margin: .1em 0 .2em; }
-.one-liner { color: var(--ink-soft); margin: 0 0 .6em; }
-.advice {
-  background: var(--card); border: 1px solid var(--line); border-left-width: 4px;
-  border-radius: 12px; padding: 12px 14px; margin: 14px 0 0;
+.gauge-num { font-size: 74px; font-weight: 700; letter-spacing: -.03em; }
+.gauge-denom { font-size: 15px; font-weight: 500; }
+.gauge-label {
+  text-align: center; font-size: 1.06rem; font-weight: 650; margin: 2px 0 0;
 }
-.advice p { margin: 0; color: var(--ink-soft); font-size: .9rem; }
-.disclaimer-top {
-  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
-  background: #f4f1f5; color: var(--ink-soft); font-size: .76rem;
+
+.verdict-text h1 { font-size: 1.62rem; margin: .05em 0 .24em; }
+.one-liner { color: var(--ink-soft); margin: 0 0 .7em; font-size: 1rem; }
+.verdict-meta { font-size: .775rem; color: var(--ink-faint); line-height: 1.7; }
+.verdict-blend {
+  margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  font-size: .775rem; color: var(--ink-soft); line-height: 1.68;
 }
-details.conf { margin: .6em 0 0; }
+.verdict-blend b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+details.conf { margin: .7em 0 0; }
 details.conf summary {
-  cursor: pointer; font-size: .82rem; color: var(--ink-soft);
-  padding: 4px 0; list-style: none;
+  cursor: pointer; font-size: .8rem; color: var(--ink-soft);
+  padding: 5px 0; list-style: none; font-weight: 550;
 }
 details.conf summary::-webkit-details-marker { display: none; }
-details.conf summary::before { content: "▸ "; color: var(--ink-faint); }
+details.conf summary::before { content: "▸ "; color: var(--ink-faint); font-size: .7rem; }
 details.conf[open] summary::before { content: "▾ "; }
-details.conf ul { margin: 6px 0; padding-left: 20px; font-size: .82rem; color: var(--ink-soft); }
-.bars { margin-top: 6px; }
-.bar-row { margin-bottom: 12px; }
-.bar-head { display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 5px; }
-.bar-head .who { font-weight: 600; }
-.bar-val { font-variant-numeric: tabular-nums; font-weight: 650; }
-.bar-track { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: 99px; }
-.stats {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+details.conf ul { margin: 6px 0 8px; padding-left: 20px; font-size: .8rem; color: var(--ink-soft); }
+details.conf li { margin-bottom: .2em; }
+
+.advice {
+  background: var(--surface); border: 1px solid var(--line);
+  border-left-width: 3px; border-radius: var(--radius-sm);
+  padding: 12px 15px; margin: 16px 0 0; box-shadow: var(--shadow);
 }
-.stat {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 12px 13px; display: flex; flex-direction: column; gap: 2px;
-}
-.stat-title { font-size: .74rem; color: var(--ink-faint); }
-.stat-value { font-size: 1.18rem; font-weight: 680; font-variant-numeric: tabular-nums; }
-.stat-sub { font-size: .72rem; color: var(--ink-faint); }
-.dim-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-.dim-card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px 14px;
-}
-.dim-card.dim-na { background: #fafafa; border-style: dashed; }
-.dim-summary { font-size: .88rem; color: var(--ink-soft); margin: 0 0 .7em; }
-.mini-bars { margin: 0 0 .7em; }
-.mini { display: grid; grid-template-columns: 68px 1fr 34px; align-items: center; gap: 8px;
-        font-size: .76rem; margin-bottom: 5px; }
-.mini span { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; font-weight: 640; }
-.mini-track { height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; }
-.mini-fill { height: 100%; border-radius: 99px; }
-.chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px; }
-.chip {
-  background: #f7f4f6; border-radius: 9px; padding: 7px 9px;
-  display: flex; flex-direction: column; gap: 1px;
-}
-.chip-na { background: #f2f2f4; opacity: .72; }
-.chip-label { font-size: .7rem; color: var(--ink-faint); line-height: 1.4; }
-.chip-val { font-size: .86rem; font-weight: 620; font-variant-numeric: tabular-nums; }
-.chip-note { font-size: .66rem; color: var(--ink-faint); line-height: 1.35; }
-.radar { width: 100%; max-width: 460px; height: auto; display: block; margin: 0 auto; }
-.legend {
-  display: flex; flex-wrap: wrap; gap: 10px; font-size: .74rem;
-  color: var(--ink-soft); margin-top: 6px;
-}
-.legend span { display: inline-flex; align-items: center; gap: 5px; }
-.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-.chart-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-.chart-card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
-}
-.chart-card h4 { margin: 0 0 .1em; }
-svg.linechart { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
-.ev-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.ev {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px;
-}
-.ev-head { display: flex; justify-content: space-between; font-size: .78rem; margin-bottom: 6px; }
-.ev-who { font-weight: 650; }
-.ev-when { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.ev blockquote {
-  margin: 0 0 6px; padding: 8px 11px; background: #f8f5f7; border-radius: 9px;
-  font-size: .88rem; white-space: pre-wrap; word-break: break-word;
-}
-.ev-reason { font-size: .72rem; color: var(--ink-faint); }
-.wins { display: grid; grid-template-columns: 1fr; gap: 12px; }
-.win { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
-.win ul { list-style: none; margin: 0; padding: 0; }
-.win li {
-  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline;
-  padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: .84rem;
-}
-.win li:last-child { border-bottom: none; }
-.win-score { font-weight: 680; font-variant-numeric: tabular-nums; }
-.bds { display: grid; gap: 12px; }
-.bd { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
-.bd h4 { display: flex; justify-content: space-between; align-items: baseline; }
-.bd-total { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 600; }
-.bd table { width: 100%; border-collapse: collapse; font-size: .8rem; }
-.bd th, .bd td { padding: 5px 4px; border-bottom: 1px solid var(--line); }
-.bd th { color: var(--ink-faint); font-weight: 500; text-align: left; font-size: .72rem; }
-.bd th.num, .bd td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.caveats { margin: 0; padding-left: 20px; font-size: .84rem; color: var(--ink-soft); }
-.caveats li { margin-bottom: .35em; }
-.comfort {
-  background: linear-gradient(170deg, #fdf7f4 0%, #f6f2f7 100%);
-  border: 1px solid var(--line); border-radius: 18px; padding: 22px 18px;
-}
-.comfort-inner { max-width: 62ch; margin: 0 auto; }
-.comfort h2 { font-size: 1.2rem; color: #6f6273; }
-.comfort p { color: #5f5766; font-size: .92rem; }
-footer {
-  margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
-  font-size: .74rem; color: var(--ink-faint);
-}
-footer p { margin: 0 0 .5em; }
-@media (min-width: 620px) {
-  body { font-size: 15.5px; }
-  .wrap { padding: 26px 22px 72px; }
-  .verdict .verdict-grid { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: center; }
-  .gauge-wrap { max-width: none; }
-  .verdict-text h1 { font-size: 2rem; }
-  .dim-grid { grid-template-columns: 1fr 1fr; }
-  .chart-grid { grid-template-columns: 1fr 1fr; }
-  .wins { grid-template-columns: 1fr 1fr; }
-  .bds { grid-template-columns: 1fr; }
-  .stats-wide { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-  .persona-grid { grid-template-columns: 1fr 1fr; }
-}
-@media print {
-  body { background: #fff; }
-  .card, .dim-card, .chart-card, .ev, .stat { break-inside: avoid; }
+.advice p { margin: 0; color: var(--ink-soft); font-size: .875rem; }
+.disclaimer-top {
+  margin-top: 14px; padding: 11px 13px; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  color: var(--ink-faint); font-size: .745rem; line-height: 1.66;
 }
 
-/* ---------- 量化指标 ---------- */
-.quant-head {
-  display: flex; flex-direction: column; gap: 4px;
-  background: var(--card); border: 1px solid var(--line); border-left-width: 4px;
-  border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;
+/* ===================== 统计卡 ===================== */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }
+.stat {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px 13px; display: flex; flex-direction: column; gap: 1px;
+  box-shadow: var(--shadow);
 }
-.quant-head strong { font-size: 1.05rem; }
-.quant-head span { font-size: .84rem; color: var(--ink-soft); }
-.quant-na { background: #fdf6e9; border-color: #f0dcb8; }
+.stat-title { font-size: .715rem; color: var(--ink-faint); letter-spacing: .01em; }
+.stat-value {
+  font-size: 1.16rem; font-weight: 680; font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em; line-height: 1.35;
+}
+.stat-sub { font-size: .705rem; color: var(--ink-faint); line-height: 1.5; }
+
+/* ===================== 进度条 ===================== */
+.bars { margin-top: 4px; }
+.bar-row { margin-bottom: 14px; }
+.bar-row:last-child { margin-bottom: 4px; }
+.bar-head { display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; margin-bottom: 6px; }
+.bar-head .who { font-weight: 620; }
+.bar-val { font-variant-numeric: tabular-nums; font-weight: 680; font-size: 1.05rem; }
+.bar-track { height: 9px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.2, .7, .3, 1); }
+
+/* ===================== 量化指标 ===================== */
+.quant-head {
+  display: flex; flex-direction: column; gap: 3px;
+  background: var(--surface); border: 1px solid var(--line); border-left-width: 3px;
+  border-radius: var(--radius-sm); padding: 13px 15px; margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.quant-head strong { font-size: 1.02rem; letter-spacing: -.01em; }
+.quant-head span { font-size: .83rem; color: var(--ink-soft); line-height: 1.65; }
+.quant-na { background: #fdf7ec; border-color: #efdcbb; }
 .quant-list { display: grid; gap: 10px; }
 .q-item {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 12px 13px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 13px 14px; box-shadow: var(--shadow);
 }
-.q-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 6px; }
-.q-label { font-weight: 620; font-size: .92rem; }
-.q-value { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--peer); }
-.q-weight { font-size: .7rem; color: var(--ink-faint); margin-left: auto; }
-.q-skip { color: var(--warn); }
-.q-bar { height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 7px; }
+.q-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.q-label { font-weight: 620; font-size: .9rem; }
+.q-value { font-variant-numeric: tabular-nums; font-weight: 650; color: var(--peer); font-size: .9rem; }
+.q-weight {
+  font-size: .68rem; color: var(--ink-faint); margin-left: auto;
+  background: var(--surface-alt); border-radius: 99px; padding: 2px 9px;
+}
+.q-skip { color: var(--warn); background: #fdf7ec; }
+.q-bar { height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
 .q-bar > div { height: 100%; border-radius: 99px; }
-.q-formula { line-height: 1.6; margin: 0; }
+.q-formula { line-height: 1.68; margin: 0; color: var(--ink-faint); }
+.q-formula b { color: var(--ink-soft); font-weight: 600; }
 .quant-legend {
-  margin-top: 12px; padding: 10px 12px; background: #f7f4f6; border-radius: 10px;
-  line-height: 1.6;
+  margin-top: 12px; padding: 11px 13px; background: var(--surface-alt);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); line-height: 1.7;
 }
 
-/* ---------- 热力图 ---------- */
-.heat-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
-.heat-scroll { overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+/* ===================== 图表栅格 ===================== */
+.chart-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 15px; box-shadow: var(--shadow);
+}
+.chart-card h4 { margin: 0 0 .15em; font-size: .95rem; }
+svg.linechart, svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; margin: 8px 0 2px; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 12px; font-size: .73rem;
+  color: var(--ink-soft); margin-top: 7px;
+}
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }
+
+/* ===================== 热力图 ===================== */
+.heat-wrap {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}
+.heat-scroll { overflow-x: auto; padding-bottom: 7px; -webkit-overflow-scrolling: touch; }
 svg.heatmap { display: block; }
 svg.heatmap rect { transition: opacity .15s; }
-svg.heatmap rect:hover { opacity: .72; }
-.heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-svg.heat-scale { display: block; }
-.heat-facts { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--ink-soft); }
-.heat-note { margin: 8px 0 0; line-height: 1.6; }
+svg.heatmap rect:hover { opacity: .68; }
+.heat-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 11px; }
+svg.heat-scale { display: block; border-radius: 3px; }
+.heat-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px; color: var(--ink-soft); }
+.heat-note { margin: 9px 0 0; line-height: 1.7; }
 
-/* ---------- 词云 ---------- */
-.cloud-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+/* ===================== 词云 ===================== */
+.cloud-wrap {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}
 svg.wordcloud { width: 100%; height: auto; display: block; }
 svg.wordcloud text { font-family: inherit; }
 
-/* ---------- 人物画像 ---------- */
-.persona-wrap { display: block; }
+/* ===================== 人物画像 ===================== */
 .persona-note {
-  background: #f7f4f6; border-radius: 10px; padding: 10px 12px;
-  line-height: 1.6; margin-bottom: 12px;
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); padding: 11px 13px; line-height: 1.7; margin-bottom: 12px;
 }
 .persona-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 .persona-card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow);
 }
-.persona-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.persona-label { font-weight: 660; font-size: 1rem; }
-.persona-tone { border-radius: 99px; padding: 2px 9px; white-space: nowrap; }
-.persona-text { font-size: .87rem; color: var(--ink-soft); margin: 0 0 8px; }
-.persona-bar { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 5px; }
+.persona-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.persona-label { font-weight: 670; font-size: .98rem; }
+.persona-tone { border-radius: 99px; padding: 2px 9px; white-space: nowrap; font-size: .68rem; font-weight: 600; }
+.persona-text { font-size: .855rem; color: var(--ink-soft); margin: 0 0 9px; line-height: 1.68; }
+.persona-bar { height: 5px; background: var(--line-soft); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
 .persona-bar > div { height: 100%; border-radius: 99px; }
 .persona-support { display: block; }
 
-/* ---------- 时间线 ---------- */
-.timeline { list-style: none; margin: 0; padding: 0 0 0 6px; position: relative; }
-.timeline::before {
-  content: ""; position: absolute; left: 11px; top: 6px; bottom: 6px;
-  width: 2px; background: var(--line); border-radius: 2px;
+/* ===================== 维度卡 ===================== */
+.dim-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.dim-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 15px; box-shadow: var(--shadow);
 }
-.tl-node { position: relative; padding: 0 0 14px 30px; }
+.dim-card.dim-na { background: var(--surface-alt); border-style: dashed; box-shadow: none; }
+.dim-card h3 { font-size: 1rem; }
+.dim-summary { font-size: .86rem; color: var(--ink-soft); margin: 0 0 .8em; line-height: 1.68; }
+.mini-bars { margin: 0 0 .8em; }
+.mini {
+  display: grid; grid-template-columns: 66px 1fr 36px; align-items: center; gap: 9px;
+  font-size: .755rem; margin-bottom: 6px;
+}
+.mini span { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mini em { font-style: normal; text-align: right; font-variant-numeric: tabular-nums; font-weight: 660; }
+.mini-track { height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }
+.mini-fill { height: 100%; border-radius: 99px; }
+.chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 7px; }
+.chip {
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.chip-na { background: #f4f3f4; border-color: transparent; opacity: .78; }
+.chip-label { font-size: .69rem; color: var(--ink-faint); line-height: 1.42; }
+.chip-val { font-size: .85rem; font-weight: 630; font-variant-numeric: tabular-nums; }
+.chip-note { font-size: .655rem; color: var(--ink-faint); line-height: 1.42; }
+
+/* ===================== 雷达 ===================== */
+.radar { width: 100%; max-width: 440px; height: auto; display: block; margin: 0 auto; }
+
+/* ===================== 证据 ===================== */
+.ev-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.ev {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 13px 14px; box-shadow: var(--shadow);
+}
+.ev-head { display: flex; justify-content: space-between; font-size: .765rem; margin-bottom: 7px; }
+.ev-who { font-weight: 660; }
+.ev-when { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.ev blockquote {
+  margin: 0 0 7px; padding: 9px 12px; background: var(--surface-alt);
+  border-left: 2px solid var(--line); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: .865rem; white-space: pre-wrap; word-break: break-word; line-height: 1.68;
+}
+.ev-reason { font-size: .71rem; color: var(--ink-faint); }
+
+/* ===================== 加分/拖后腿 ===================== */
+.wins { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.win {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}
+.win h4 { font-size: .92rem; }
+.win ul { list-style: none; margin: 0; padding: 0; }
+.win li {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 11px; align-items: baseline;
+  padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: .83rem;
+}
+.win li:last-child { border-bottom: none; }
+.win-score { font-weight: 690; font-variant-numeric: tabular-nums; }
+
+/* ===================== 分账表 ===================== */
+.bds { display: grid; gap: 12px; }
+.bd {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}
+.bd h4 { display: flex; justify-content: space-between; align-items: baseline; font-size: .92rem; }
+.bd-total { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 640; }
+.bd table { width: 100%; border-collapse: collapse; font-size: .795rem; }
+.bd th, .bd td { padding: 6px 4px; border-bottom: 1px solid var(--line-soft); }
+.bd th { color: var(--ink-faint); font-weight: 560; text-align: left; font-size: .71rem; }
+.bd th.num, .bd td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.bd tbody tr:last-child td { border-bottom: none; }
+
+/* ===================== 时间线 ===================== */
+.timeline { list-style: none; margin: 0; padding: 2px 0 0 6px; position: relative; }
+.timeline::before {
+  content: ""; position: absolute; left: 10px; top: 12px; bottom: 12px;
+  width: 1.5px; background: var(--line); border-radius: 2px;
+}
+.tl-node { position: relative; padding: 0 0 12px 30px; }
+.tl-node:last-child { padding-bottom: 0; }
 .tl-dot {
-  position: absolute; left: 5px; top: 5px; width: 13px; height: 13px;
+  position: absolute; left: 4px; top: 13px; width: 13px; height: 13px;
   border-radius: 50%; border: 2.5px solid var(--bg); box-sizing: border-box;
 }
-.tl-body { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.tl-body {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 11px 13px; box-shadow: var(--shadow);
+}
 .tl-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
-.tl-title { font-weight: 640; font-size: .9rem; }
-.tl-when { font-size: .74rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.tl-detail { margin: 4px 0 0; font-size: .85rem; color: var(--ink-soft); }
-svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
+.tl-title { font-weight: 645; font-size: .885rem; }
+.tl-when { font-size: .72rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.tl-detail { margin: 4px 0 0; font-size: .84rem; color: var(--ink-soft); line-height: 1.66; }
+
+/* ===================== 注意项 ===================== */
+.caveats { margin: 0; padding-left: 20px; font-size: .825rem; color: var(--ink-soft); line-height: 1.7; }
+.caveats li { margin-bottom: .35em; }
+
+/* ===================== 安慰 ===================== */
+.comfort {
+  background: linear-gradient(168deg, #fdf8f5 0%, #f7f3f8 100%);
+  border: 1px solid var(--line); border-radius: 20px; padding: 26px 20px;
+  box-shadow: var(--shadow);
+}
+.comfort-inner { max-width: 62ch; margin: 0 auto; }
+.comfort h2 { font-size: 1.16rem; color: #6b5f70; }
+.comfort p { color: #5b5464; font-size: .905rem; line-height: 1.82; }
+
+/* ===================== 页脚 ===================== */
+footer {
+  margin-top: 30px; padding: 20px 16px 0; border-top: 1px solid var(--line);
+  font-size: .735rem; color: var(--ink-faint); line-height: 1.72;
+}
+footer p { margin: 0 0 .6em; }
+footer b { color: var(--ink-soft); }
+
+/* ===================== 桌面端 ===================== */
+@media (min-width: 940px) {
+  :root { --fs-base: 15.5px; }
+  .layout { display: grid; grid-template-columns: var(--nav-w) minmax(0, 1fr); gap: 0; }
+
+  .nav {
+    position: sticky; top: 0; align-self: start; height: 100vh;
+    background: var(--nav-bg); border-bottom: none; border-right: 1px solid rgba(255, 255, 255, .07);
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: var(--shadow-nav); z-index: 60;
+  }
+  .nav-brand { padding: 22px 20px 16px; gap: 10px; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; font-size: 15px; }
+  .brand-title { color: #fff; font-size: .95rem; }
+  .brand-sub { color: rgba(255, 255, 255, .42); font-size: .7rem; }
+
+  .nav-list {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 0 12px 16px; overflow-y: auto; overflow-x: hidden;
+  }
+  .nav-list::-webkit-scrollbar { width: 4px; }
+  .nav-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .14); border-radius: 4px; }
+  .nav-link {
+    color: var(--nav-ink); font-size: .825rem; padding: 8px 11px;
+    border-radius: 8px; border-left: 2px solid transparent; border-radius: 0 8px 8px 0;
+    white-space: normal; line-height: 1.45;
+  }
+  .nav-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+  .nav-link.is-active {
+    background: rgba(255, 255, 255, .11); color: var(--nav-ink_active);
+    border-left-color: var(--peer); font-weight: 620;
+  }
+  .nav-foot {
+    display: block;
+    margin-top: auto; padding: 14px 20px 18px; font-size: .68rem; line-height: 1.6;
+    color: rgba(255, 255, 255, .34); border-top: 1px solid rgba(255, 255, 255, .07);
+  }
+
+  .main { padding: 34px 40px 80px; max-width: 940px; }
+  .section { margin-bottom: 52px; scroll-margin-top: 24px; }
+  .section-head h2 { font-size: 1.4rem; }
+  .verdict-grid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: center; }
+  .gauge-wrap { margin: 0; max-width: none; }
+  .verdict-text h1 { font-size: 2rem; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }
+  .chart-grid { grid-template-columns: 1fr 1fr; }
+  .dim-grid { grid-template-columns: 1fr 1fr; }
+  .wins { grid-template-columns: 1fr 1fr; }
+  .persona-grid { grid-template-columns: 1fr 1fr; }
+  .card { padding: 22px 20px; }
+}
+@media (min-width: 1180px) {
+  .main { max-width: 1020px; padding: 38px 48px 96px; }
+}
+
+@media print {
+  body { background: #fff; }
+  .nav { display: none; }
+  .layout { display: block; }
+  .main { padding: 0; max-width: none; }
+  .card, .dim-card, .chart-card, .ev, .stat, .q-item, .persona-card, .tl-body {
+    break-inside: avoid; box-shadow: none;
+  }
+  .section { break-inside: avoid-page; }
+}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
 
+  
+<nav class="nav" aria-label="报告章节导航">
+  <div class="nav-brand">
+    <span class="brand-mark" aria-hidden="true">🌼</span>
+    <span class="brand-text">
+      <span class="brand-title">TA 到底爱不爱我</span>
+      <span class="brand-sub">阿澈 × 我 · 58 分</span>
+    </span>
+  </div>
+  <ul class="nav-list"><li><a class="nav-link" href="#verdict"><span class="nav-ico" aria-hidden="true">🌼</span>结论</a></li><li><a class="nav-link" href="#quantifiers"><span class="nav-ico" aria-hidden="true">🎯</span>量化指标</a></li><li><a class="nav-link" href="#balance"><span class="nav-ico" aria-hidden="true">⚖️</span>双方投入度与关键数据</a></li><li><a class="nav-link" href="#footprint"><span class="nav-ico" aria-hidden="true">🧭</span>聊天足迹</a></li><li><a class="nav-link" href="#heatmap"><span class="nav-ico" aria-hidden="true">📅</span>日历热力图</a></li><li><a class="nav-link" href="#topics"><span class="nav-ico" aria-hidden="true">💬</span>话题词云</a></li><li><a class="nav-link" href="#persona"><span class="nav-ico" aria-hidden="true">🪞</span>阿澈 是怎样的人</a></li><li><a class="nav-link" href="#timeline"><span class="nav-ico" aria-hidden="true">📍</span>关键节点</a></li><li><a class="nav-link" href="#radar"><span class="nav-ico" aria-hidden="true">📊</span>八维雷达图</a></li><li><a class="nav-link" href="#dimensions"><span class="nav-ico" aria-hidden="true">🔍</span>维度明细</a></li><li><a class="nav-link" href="#trends"><span class="nav-ico" aria-hidden="true">📈</span>互动趋势</a></li><li><a class="nav-link" href="#evidence"><span class="nav-ico" aria-hidden="true">🗂</span>原话与证据</a></li><li><a class="nav-link" href="#score"><span class="nav-ico" aria-hidden="true">🧮</span>分数是怎么算出来的</a></li><li><a class="nav-link" href="#notes"><span class="nav-ico" aria-hidden="true">📌</span>说明与免责</a></li></ul>
+  <div class="nav-foot">
+    数据只在本地处理<br>
+    v0.1.0
+  </div>
+</nav>
+
+  <main class="main">
+
+    
+<section class="section" id="verdict">
+  <div class="section-head">
+    <h2><span class="section-num">01</span>结论</h2>
+    <p class="section-desc">0–100 情感投入指数与等级判断</p>
+  </div>
   
 <section class="verdict">
   
   <p class="kicker">情感投入指数</p>
   <div class="verdict-grid">
     <div class="gauge-wrap">
-<svg viewBox="0 0 320 250" class="gauge" role="img" aria-label="情感投入指数 58 分">
-  <path d="M 221.95 238.47 A 108.00 108.00 0 1 0 221.95 61.53"
-        fill="none" stroke="#ece6e8" stroke-width="18" stroke-linecap="round"/>
-  <path d="M 221.95 238.47 A 108.00 108.00 0 0 0 58.51 113.06"
-        fill="none" stroke="#d9a441" stroke-width="18" stroke-linecap="round"/>
-  <line x1="226.5" y1="245.0" x2="231.1" y2="251.6" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="238.0" y="261.4" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">0</text><line x1="180.1" y1="264.2" x2="180.8" y2="268.2" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><line x1="130.0" y1="262.0" x2="127.9" y2="269.8" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="124.8" y="281.4" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">20</text><line x1="85.4" y1="238.9" x2="82.9" y2="241.9" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><line x1="54.9" y1="199.0" x2="47.6" y2="202.4" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="36.7" y="207.5" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">40</text><line x1="44.0" y1="150.0" x2="40.0" y2="150.0" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><line x1="54.9" y1="101.0" x2="47.6" y2="97.6" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="36.7" y="92.5" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">60</text><line x1="85.4" y1="61.1" x2="82.9" y2="58.1" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><line x1="130.0" y1="38.0" x2="127.9" y2="30.2" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="124.8" y="18.6" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">80</text><line x1="180.1" y1="35.8" x2="180.8" y2="31.8" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><line x1="226.5" y1="55.0" x2="231.1" y2="48.4" stroke="#a9a2ae" stroke-width="1.5" stroke-linecap="round"/><text x="238.0" y="38.6" fill="#a9a2ae" font-size="10" text-anchor="middle" dominant-baseline="middle">100</text>
-  <line x1="160.0" y1="150.0" x2="82.9" y2="122.0"
-        stroke="#3d3a3f" stroke-width="3.5" stroke-linecap="round"/>
-  <circle cx="160.0" cy="150.0" r="7" fill="#3d3a3f"/>
-  <text x="160.0" y="116.0" text-anchor="middle" fill="#3d3a3f"
-        font-size="52" font-weight="700">58</text>
-  <text x="160.0" y="142.0" text-anchor="middle" fill="#7b7480"
-        font-size="13">/ 100</text>
-  <text x="160.0" y="194.0" text-anchor="middle" fill="#d9a441"
-        font-size="16" font-weight="600">有点平淡了</text>
-</svg></div>
+<svg viewBox="0 0 260 260" class="gauge" role="img"
+     aria-label="情感投入指数 58 分，满分 100 分">
+  <defs>
+    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d9a441" stop-opacity="0.78"/>
+      <stop offset="100%" stop-color="#d9a441"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底环 -->
+  <circle cx="130.0" cy="130.0" r="104.0" fill="none"
+          stroke="#e7e2df" stroke-width="18.0"/>
+  <!-- 进度环：从 12 点方向顺时针 -->
+  <circle cx="130.0" cy="130.0" r="104.0" fill="none"
+          stroke="url(#gaugeGrad)" stroke-width="18.0" stroke-linecap="round"
+          stroke-dasharray="379.00 274.45"
+          transform="rotate(-90 130.0 130.0)"/>
+
+  <text x="130.0" y="128.0" text-anchor="middle"
+        dominant-baseline="middle" class="gauge-num"
+        fill="#2a2731">58</text>
+  <text x="130.0" y="170.0" text-anchor="middle"
+        dominant-baseline="middle" class="gauge-denom"
+        fill="#928c98">/ 100</text>
+</svg>
+<p class="gauge-label" style="color:#d9a441">有点平淡了</p></div>
     <div class="verdict-text">
       <h1 style="color:#d9a441">有点平淡了</h1>
       <p class="one-liner">人还在，只是节奏慢下来了——很多长期关系都会走到这里。</p>
@@ -318,13 +571,17 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
   </div>
   <div class="disclaimer-top">本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。</div>
 </section>
-
-  <section>
-    <h2>五个量化指标</h2>
-    <p class="tiny faint">
-      这一组指标只看 <b>阿澈</b> 的行为信号：回得多快、
-      一次能连发几条、深夜还在不在、冷战之后谁先开口、一段对话最后由谁收尾。
-      每一项都写明了计算口径与数据来源，你可以自己复核。
+</section>
+    
+<section class="section" id="quantifiers">
+  <div class="section-head">
+    <h2><span class="section-num">02</span>量化指标</h2>
+    <p class="section-desc">回复速度 · 消息频率 · 深夜 · 破冰 · 收尾</p>
+  </div>
+  
+    <p class="tiny faint" style="margin-bottom:12px">
+      这一组指标只看 <b>阿澈</b> 的行为信号：回得多快、一次能连发几条、
+      深夜还在不在、冷战之后谁先开口、一段对话最后由谁收尾。
     </p>
     
 <div class="quant-wrap">
@@ -336,7 +593,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
         <span class="q-value">中位 2 分钟</span>
         <span class="q-weight">权重 33% · 贡献 22.6</span>
       </div>
-      <div class="q-bar"><div style="width:68%;background:#c96a8a"></div></div>
+      <div class="q-bar"><div style="width:68%;background:#b4576f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：TA 每次回复与上一条对方消息的时间差（仅统计 ≤24 小时的间隔），取中位数；映射曲线：中位 5 分钟 ≈ 50 分，越快越高<br>
         <b>来源</b>：每条消息的时间戳与说话人
@@ -349,7 +606,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
         <span class="q-value">平均 1.4 条 / 5 分钟</span>
         <span class="q-weight">权重 17% · 贡献 5.7</span>
       </div>
-      <div class="q-bar"><div style="width:34%;background:#c96a8a"></div></div>
+      <div class="q-bar"><div style="width:34%;background:#b4576f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：把 TA 的消息按 5 分钟窗口分桶，统计「有消息的窗口」的平均条数；映射曲线：平均 4 条 / 5 分钟 ≈ 100 分，1 条 ≈ 25 分<br>
         <b>来源</b>：每条消息的时间戳（只算 TA）
@@ -375,7 +632,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
         <span class="q-value">6 / 16 次</span>
         <span class="q-weight">权重 28% · 贡献 20.8</span>
       </div>
-      <div class="q-bar"><div style="width:75%;background:#c96a8a"></div></div>
+      <div class="q-bar"><div style="width:75%;background:#b4576f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：沉默 ≥24 小时后，下一段对话的第一条消息由谁发出；统计 TA 破冰次数 ÷ 总破冰次数。理想值是双方各半（50% 得满分），全由一方承担则得分下降<br>
         <b>来源</b>：会话分段（30 分钟无消息即断开）+ 每条消息的时间戳与说话人
@@ -388,7 +645,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
         <span class="q-value">20 / 36 段</span>
         <span class="q-weight">权重 22% · 贡献 21.6</span>
       </div>
-      <div class="q-bar"><div style="width:97%;background:#c96a8a"></div></div>
+      <div class="q-bar"><div style="width:97%;background:#b4576f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：每段对话最后一条消息的归属；TA 占 50% 最均衡，越偏离 50%（无论谁多）说明收尾越固定在一方<br>
         <b>来源</b>：会话分段（30 分钟无消息即结束）+ 每条消息的说话人
@@ -401,33 +658,39 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     样本不足的指标会被剔除，权重重新归一化，<b>不会被当成 0 分</b>。
   </div>
 </div>
-  </section>
-
-  <section>
-    <h2>双方投入度</h2>
+</section>
+    
+<section class="section" id="balance">
+  <div class="section-head">
+    <h2><span class="section-num">03</span>双方投入度与关键数据</h2>
+    <p class="section-desc">两个人的投入对比，以及一眼能看完的数字</p>
+  </div>
+  
     <div class="card">
+      <h3 style="font-size:.95rem;margin-bottom:10px">双方的投入度</h3>
       <div class="bars">
       <div class="bar-row">
-        <div class="bar-head"><span class="who" style="color:#c96a8a">阿澈</span>
-          <span class="bar-val" style="color:#c96a8a">57</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:57.0%;background:#c96a8a"></div></div>
+        <div class="bar-head"><span class="who" style="color:#b4576f">阿澈</span>
+          <span class="bar-val" style="color:#b4576f">57</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:57.0%;background:#b4576f"></div></div>
       </div>
       <div class="bar-row">
-        <div class="bar-head"><span class="who" style="color:#7fa8c9">我</span>
-          <span class="bar-val" style="color:#7fa8c9">71</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:71.1%;background:#7fa8c9"></div></div>
+        <div class="bar-head"><span class="who" style="color:#4f7fa0">我</span>
+          <span class="bar-val" style="color:#4f7fa0">71</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:71.1%;background:#4f7fa0"></div></div>
       </div><p class="tiny faint">双向互动综合：63 / 100</p></div>
     </div>
-  </section>
-
-  <section>
-    <h2>关键数据</h2>
+    <h3 style="font-size:.95rem;margin:20px 0 10px">关键数据</h3>
     <div class="stats"><div class="stat"><span class="stat-title">有效消息</span><span class="stat-value">64 条</span><span class="stat-sub">我 30 · 阿澈 34</span></div><div class="stat"><span class="stat-title">时间跨度</span><span class="stat-value">203 天</span><span class="stat-sub">首尾相差 203 天，其中 27 天有对话</span></div><div class="stat"><span class="stat-title">中位回复间隔</span><span class="stat-value">2 分钟</span><span class="stat-sub">我：1 分钟</span></div><div class="stat"><span class="stat-title">TA 主动发起占比</span><span class="stat-value">47%</span><span class="stat-sub">共 30 轮对话</span></div><div class="stat"><span class="stat-title">实质性字数比</span><span class="stat-value">0.97×</span><span class="stat-sub">阿澈 ÷ 我</span></div><div class="stat"><span class="stat-title">TA 收尾占比</span><span class="stat-value">67%</span><span class="stat-sub">对话最后一句话的归属</span></div><div class="stat"><span class="stat-title">TA 深夜消息占比</span><span class="stat-value">18%</span><span class="stat-sub">23:00–03:00</span></div><div class="stat"><span class="stat-title">TA 平均情绪分</span><span class="stat-value">+0.14</span><span class="stat-sub">-1 冷 ~ +1 暖</span></div></div>
-  </section>
-
-  <section>
-    <h2>聊天足迹</h2>
-    <p class="tiny faint">
+</section>
+    
+<section class="section" id="footprint">
+  <div class="section-head">
+    <h2><span class="section-num">04</span>聊天足迹</h2>
+    <p class="section-desc">跨度、最佳时段、活跃月份、最长一次与最长沉默</p>
+  </div>
+  
+    <p class="tiny faint" style="margin-bottom:12px">
       从第一条消息一直算到今天。所有数字都来自消息时间戳，没有估算。
     </p>
     
@@ -439,11 +702,11 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     <p class="tiny faint">按小时统计消息条数，堆叠展示双方贡献</p>
     
 <svg viewBox="0 0 720 190" class="hourbars" role="img" aria-label="24 小时活跃度">
-  <rect x="34.0" y="14" width="28.2" height="146" fill="#c96a8a" opacity="0.05"/><rect x="62.2" y="14" width="28.2" height="146" fill="#c96a8a" opacity="0.05"/><rect x="90.3" y="14" width="28.2" height="146" fill="#c96a8a" opacity="0.05"/><rect x="681.8" y="14" width="28.2" height="146" fill="#c96a8a" opacity="0.05"/><line x1="34" y1="14.0" x2="710" y2="14.0" stroke="#ece6e8" stroke-width="1"/><line x1="34" y1="62.7" x2="710" y2="62.7" stroke="#ece6e8" stroke-width="1"/><line x1="34" y1="111.3" x2="710" y2="111.3" stroke="#ece6e8" stroke-width="1"/><line x1="34" y1="160.0" x2="710" y2="160.0" stroke="#ece6e8" stroke-width="1"/><rect x="260.3" y="120.2" width="26.2" height="39.8" fill="#c96a8a" opacity="0.85"><title>08:00 · 阿澈 3 条</title></rect><rect x="260.3" y="67.1" width="26.2" height="53.1" fill="#7fa8c9" opacity="0.85"><title>08:00 · 我 4 条</title></rect><rect x="288.5" y="120.2" width="26.2" height="39.8" fill="#7fa8c9" opacity="0.85"><title>09:00 · 我 3 条</title></rect><rect x="316.7" y="146.7" width="26.2" height="13.3" fill="#c96a8a" opacity="0.85"><title>10:00 · 阿澈 1 条</title></rect><rect x="316.7" y="133.5" width="26.2" height="13.3" fill="#7fa8c9" opacity="0.85"><title>10:00 · 我 1 条</title></rect><rect x="344.8" y="146.7" width="26.2" height="13.3" fill="#c96a8a" opacity="0.85"><title>11:00 · 阿澈 1 条</title></rect><rect x="344.8" y="133.5" width="26.2" height="13.3" fill="#7fa8c9" opacity="0.85"><title>11:00 · 我 1 条</title></rect><rect x="373.0" y="106.9" width="26.2" height="53.1" fill="#c96a8a" opacity="0.85"><title>12:00 · 阿澈 4 条</title></rect><rect x="373.0" y="80.4" width="26.2" height="26.5" fill="#7fa8c9" opacity="0.85"><title>12:00 · 我 2 条</title></rect><rect x="401.2" y="133.5" width="26.2" height="26.5" fill="#c96a8a" opacity="0.85"><title>13:00 · 阿澈 2 条</title></rect><rect x="401.2" y="106.9" width="26.2" height="26.5" fill="#7fa8c9" opacity="0.85"><title>13:00 · 我 2 条</title></rect><rect x="429.3" y="146.7" width="26.2" height="13.3" fill="#7fa8c9" opacity="0.85"><title>14:00 · 我 1 条</title></rect><rect x="457.5" y="146.7" width="26.2" height="13.3" fill="#c96a8a" opacity="0.85"><title>15:00 · 阿澈 1 条</title></rect><rect x="542.0" y="146.7" width="26.2" height="13.3" fill="#c96a8a" opacity="0.85"><title>18:00 · 阿澈 1 条</title></rect><rect x="570.2" y="133.5" width="26.2" height="26.5" fill="#c96a8a" opacity="0.85"><title>19:00 · 阿澈 2 条</title></rect><rect x="570.2" y="80.4" width="26.2" height="53.1" fill="#7fa8c9" opacity="0.85"><title>19:00 · 我 4 条</title></rect><rect x="598.3" y="133.5" width="26.2" height="26.5" fill="#c96a8a" opacity="0.85"><title>20:00 · 阿澈 2 条</title></rect><rect x="598.3" y="120.2" width="26.2" height="13.3" fill="#7fa8c9" opacity="0.85"><title>20:00 · 我 1 条</title></rect><rect x="626.5" y="106.9" width="26.2" height="53.1" fill="#c96a8a" opacity="0.85"><title>21:00 · 阿澈 4 条</title></rect><rect x="626.5" y="40.5" width="26.2" height="66.4" fill="#7fa8c9" opacity="0.85"><title>21:00 · 我 5 条</title></rect><rect x="654.7" y="67.1" width="26.2" height="92.9" fill="#c96a8a" opacity="0.85"><title>22:00 · 阿澈 7 条</title></rect><rect x="654.7" y="14.0" width="26.2" height="53.1" fill="#7fa8c9" opacity="0.85"><title>22:00 · 我 4 条</title></rect><rect x="682.8" y="80.4" width="26.2" height="79.6" fill="#c96a8a" opacity="0.85"><title>23:00 · 阿澈 6 条</title></rect><rect x="682.8" y="53.8" width="26.2" height="26.5" fill="#7fa8c9" opacity="0.85"><title>23:00 · 我 2 条</title></rect><text x="48.1" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">00</text><text x="132.6" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">03</text><text x="217.1" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">06</text><text x="301.6" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">09</text><text x="386.1" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">12</text><text x="470.6" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">15</text><text x="555.1" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">18</text><text x="639.6" y="175" font-size="9" text-anchor="middle" fill="#a9a2ae">21</text>
+  <rect x="34.0" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="62.2" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="90.3" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="681.8" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><line x1="34" y1="14.0" x2="710" y2="14.0" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="62.7" x2="710" y2="62.7" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="111.3" x2="710" y2="111.3" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="160.0" x2="710" y2="160.0" stroke="#e7e2df" stroke-width="1"/><rect x="260.3" y="120.2" width="26.2" height="39.8" fill="#b4576f" opacity="0.85"><title>08:00 · 阿澈 3 条</title></rect><rect x="260.3" y="67.1" width="26.2" height="53.1" fill="#4f7fa0" opacity="0.85"><title>08:00 · 我 4 条</title></rect><rect x="288.5" y="120.2" width="26.2" height="39.8" fill="#4f7fa0" opacity="0.85"><title>09:00 · 我 3 条</title></rect><rect x="316.7" y="146.7" width="26.2" height="13.3" fill="#b4576f" opacity="0.85"><title>10:00 · 阿澈 1 条</title></rect><rect x="316.7" y="133.5" width="26.2" height="13.3" fill="#4f7fa0" opacity="0.85"><title>10:00 · 我 1 条</title></rect><rect x="344.8" y="146.7" width="26.2" height="13.3" fill="#b4576f" opacity="0.85"><title>11:00 · 阿澈 1 条</title></rect><rect x="344.8" y="133.5" width="26.2" height="13.3" fill="#4f7fa0" opacity="0.85"><title>11:00 · 我 1 条</title></rect><rect x="373.0" y="106.9" width="26.2" height="53.1" fill="#b4576f" opacity="0.85"><title>12:00 · 阿澈 4 条</title></rect><rect x="373.0" y="80.4" width="26.2" height="26.5" fill="#4f7fa0" opacity="0.85"><title>12:00 · 我 2 条</title></rect><rect x="401.2" y="133.5" width="26.2" height="26.5" fill="#b4576f" opacity="0.85"><title>13:00 · 阿澈 2 条</title></rect><rect x="401.2" y="106.9" width="26.2" height="26.5" fill="#4f7fa0" opacity="0.85"><title>13:00 · 我 2 条</title></rect><rect x="429.3" y="146.7" width="26.2" height="13.3" fill="#4f7fa0" opacity="0.85"><title>14:00 · 我 1 条</title></rect><rect x="457.5" y="146.7" width="26.2" height="13.3" fill="#b4576f" opacity="0.85"><title>15:00 · 阿澈 1 条</title></rect><rect x="542.0" y="146.7" width="26.2" height="13.3" fill="#b4576f" opacity="0.85"><title>18:00 · 阿澈 1 条</title></rect><rect x="570.2" y="133.5" width="26.2" height="26.5" fill="#b4576f" opacity="0.85"><title>19:00 · 阿澈 2 条</title></rect><rect x="570.2" y="80.4" width="26.2" height="53.1" fill="#4f7fa0" opacity="0.85"><title>19:00 · 我 4 条</title></rect><rect x="598.3" y="133.5" width="26.2" height="26.5" fill="#b4576f" opacity="0.85"><title>20:00 · 阿澈 2 条</title></rect><rect x="598.3" y="120.2" width="26.2" height="13.3" fill="#4f7fa0" opacity="0.85"><title>20:00 · 我 1 条</title></rect><rect x="626.5" y="106.9" width="26.2" height="53.1" fill="#b4576f" opacity="0.85"><title>21:00 · 阿澈 4 条</title></rect><rect x="626.5" y="40.5" width="26.2" height="66.4" fill="#4f7fa0" opacity="0.85"><title>21:00 · 我 5 条</title></rect><rect x="654.7" y="67.1" width="26.2" height="92.9" fill="#b4576f" opacity="0.85"><title>22:00 · 阿澈 7 条</title></rect><rect x="654.7" y="14.0" width="26.2" height="53.1" fill="#4f7fa0" opacity="0.85"><title>22:00 · 我 4 条</title></rect><rect x="682.8" y="80.4" width="26.2" height="79.6" fill="#b4576f" opacity="0.85"><title>23:00 · 阿澈 6 条</title></rect><rect x="682.8" y="53.8" width="26.2" height="26.5" fill="#4f7fa0" opacity="0.85"><title>23:00 · 我 2 条</title></rect><text x="48.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">00</text><text x="132.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">03</text><text x="217.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">06</text><text x="301.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">09</text><text x="386.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">12</text><text x="470.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">15</text><text x="555.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">18</text><text x="639.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">21</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#c96a8a"></i>阿澈</span>
-  <span><i style="background:#7fa8c9"></i>我</span>
+  <span><i style="background:#b4576f"></i>阿澈</span>
+  <span><i style="background:#4f7fa0"></i>我</span>
   <span class="faint">淡色区域 = 深夜 23:00–03:00</span>
 </div>
   </div>
@@ -452,20 +715,24 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     <p class="tiny faint">按月统计消息条数，已标出最多与最少的月份</p>
     
 <svg viewBox="0 0 720 200" class="monthbars" role="img" aria-label="月度消息量">
-  <rect x="35.5" y="77.1" width="93.6" height="88.9" fill="#c96a8a" opacity="0.85"><title>2023-04 · 阿澈 16 条</title></rect><rect x="35.5" y="16.0" width="93.6" height="61.1" fill="#7fa8c9" opacity="0.85"><title>2023-04 · 我 11 条</title></rect><rect x="132.1" y="154.9" width="93.6" height="11.1" fill="#c96a8a" opacity="0.85"><title>2023-05 · 阿澈 2 条</title></rect><rect x="132.1" y="143.8" width="93.6" height="11.1" fill="#7fa8c9" opacity="0.85"><title>2023-05 · 我 2 条</title></rect><rect x="228.6" y="149.3" width="93.6" height="16.7" fill="#c96a8a" opacity="0.85"><title>2023-06 · 阿澈 3 条</title></rect><rect x="228.6" y="132.7" width="93.6" height="16.7" fill="#7fa8c9" opacity="0.85"><title>2023-06 · 我 3 条</title></rect><rect x="325.2" y="160.4" width="93.6" height="5.6" fill="#c96a8a" opacity="0.85"><title>2023-07 · 阿澈 1 条</title></rect><rect x="325.2" y="149.3" width="93.6" height="11.1" fill="#7fa8c9" opacity="0.85"><title>2023-07 · 我 2 条</title></rect><rect x="421.8" y="154.9" width="93.6" height="11.1" fill="#c96a8a" opacity="0.85"><title>2023-08 · 阿澈 2 条</title></rect><rect x="421.8" y="143.8" width="93.6" height="11.1" fill="#7fa8c9" opacity="0.85"><title>2023-08 · 我 2 条</title></rect><rect x="518.4" y="154.9" width="93.6" height="11.1" fill="#c96a8a" opacity="0.85"><title>2023-09 · 阿澈 2 条</title></rect><rect x="518.4" y="143.8" width="93.6" height="11.1" fill="#7fa8c9" opacity="0.85"><title>2023-09 · 我 2 条</title></rect><rect x="614.9" y="121.6" width="93.6" height="44.4" fill="#c96a8a" opacity="0.85"><title>2023-10 · 阿澈 8 条</title></rect><rect x="614.9" y="77.1" width="93.6" height="44.4" fill="#7fa8c9" opacity="0.85"><title>2023-10 · 我 8 条</title></rect><text x="82.3" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">4月</text><text x="178.9" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">5月</text><text x="275.4" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">6月</text><text x="372.0" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">7月</text><text x="468.6" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">8月</text><text x="565.1" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">9月</text><text x="661.7" y="182" font-size="9" text-anchor="middle" fill="#a9a2ae">10月</text><text x="82.3" y="12" font-size="9" text-anchor="middle" fill="#d9a441">最多</text><text x="372.0" y="12" font-size="9" text-anchor="middle" fill="#a9a2ae">最少</text>
+  <rect x="35.5" y="77.1" width="93.6" height="88.9" fill="#b4576f" opacity="0.85"><title>2023-04 · 阿澈 16 条</title></rect><rect x="35.5" y="16.0" width="93.6" height="61.1" fill="#4f7fa0" opacity="0.85"><title>2023-04 · 我 11 条</title></rect><rect x="132.1" y="154.9" width="93.6" height="11.1" fill="#b4576f" opacity="0.85"><title>2023-05 · 阿澈 2 条</title></rect><rect x="132.1" y="143.8" width="93.6" height="11.1" fill="#4f7fa0" opacity="0.85"><title>2023-05 · 我 2 条</title></rect><rect x="228.6" y="149.3" width="93.6" height="16.7" fill="#b4576f" opacity="0.85"><title>2023-06 · 阿澈 3 条</title></rect><rect x="228.6" y="132.7" width="93.6" height="16.7" fill="#4f7fa0" opacity="0.85"><title>2023-06 · 我 3 条</title></rect><rect x="325.2" y="160.4" width="93.6" height="5.6" fill="#b4576f" opacity="0.85"><title>2023-07 · 阿澈 1 条</title></rect><rect x="325.2" y="149.3" width="93.6" height="11.1" fill="#4f7fa0" opacity="0.85"><title>2023-07 · 我 2 条</title></rect><rect x="421.8" y="154.9" width="93.6" height="11.1" fill="#b4576f" opacity="0.85"><title>2023-08 · 阿澈 2 条</title></rect><rect x="421.8" y="143.8" width="93.6" height="11.1" fill="#4f7fa0" opacity="0.85"><title>2023-08 · 我 2 条</title></rect><rect x="518.4" y="154.9" width="93.6" height="11.1" fill="#b4576f" opacity="0.85"><title>2023-09 · 阿澈 2 条</title></rect><rect x="518.4" y="143.8" width="93.6" height="11.1" fill="#4f7fa0" opacity="0.85"><title>2023-09 · 我 2 条</title></rect><rect x="614.9" y="121.6" width="93.6" height="44.4" fill="#b4576f" opacity="0.85"><title>2023-10 · 阿澈 8 条</title></rect><rect x="614.9" y="77.1" width="93.6" height="44.4" fill="#4f7fa0" opacity="0.85"><title>2023-10 · 我 8 条</title></rect><text x="82.3" y="182" font-size="9" text-anchor="middle" fill="#928c98">4月</text><text x="178.9" y="182" font-size="9" text-anchor="middle" fill="#928c98">5月</text><text x="275.4" y="182" font-size="9" text-anchor="middle" fill="#928c98">6月</text><text x="372.0" y="182" font-size="9" text-anchor="middle" fill="#928c98">7月</text><text x="468.6" y="182" font-size="9" text-anchor="middle" fill="#928c98">8月</text><text x="565.1" y="182" font-size="9" text-anchor="middle" fill="#928c98">9月</text><text x="661.7" y="182" font-size="9" text-anchor="middle" fill="#928c98">10月</text><text x="82.3" y="12" font-size="9" text-anchor="middle" fill="#b07d34">最多</text><text x="372.0" y="12" font-size="9" text-anchor="middle" fill="#928c98">最少</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#c96a8a"></i>阿澈</span>
-  <span><i style="background:#7fa8c9"></i>我</span>
+  <span><i style="background:#b4576f"></i>阿澈</span>
+  <span><i style="background:#4f7fa0"></i>我</span>
 </div>
   </div>
 </div>
 <p class="tiny faint">「互动最均衡的月份」是<b>代理指标</b>：取消息量不低于最高月 25% 的月份里、TA 发言占比最高者。它衡量的是「双方都在说话的均衡度」，<b>不是感情好坏的真相</b>——聊得多、聊得均衡，也可能只是那段日子比较闲。</p>
-  </section>
-
-  <section>
-    <h2>聊天日历热力图</h2>
-    <p class="tiny faint">
+</section>
+    
+<section class="section" id="heatmap">
+  <div class="section-head">
+    <h2><span class="section-num">05</span>日历热力图</h2>
+    <p class="section-desc">仿 GitHub 贡献图，颜色深浅代表聊了多久</p>
+  </div>
+  
+    <p class="tiny faint" style="margin-bottom:12px">
       仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
       （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
     </p>
@@ -475,15 +742,15 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     <svg viewBox="0 0 452 120" width="452" height="120"
          class="heatmap" role="img"
          aria-label="聊天足迹热力图，共 27 天有对话">
-      <text x="26" y="11" font-size="9" fill="#a9a2ae">3月</text><text x="40" y="11" font-size="9" fill="#a9a2ae">4月</text><text x="96" y="11" font-size="9" fill="#a9a2ae">5月</text><text x="166" y="11" font-size="9" fill="#a9a2ae">6月</text><text x="222" y="11" font-size="9" fill="#a9a2ae">7月</text><text x="292" y="11" font-size="9" fill="#a9a2ae">8月</text><text x="348" y="11" font-size="9" fill="#a9a2ae">9月</text><text x="404" y="11" font-size="9" fill="#a9a2ae">10月</text>
-      <text x="20" y="24.5" font-size="9" text-anchor="end" fill="#a9a2ae">一</text><text x="20" y="52.5" font-size="9" text-anchor="end" fill="#a9a2ae">三</text><text x="20" y="80.5" font-size="9" text-anchor="end" fill="#a9a2ae">五</text><text x="20" y="108.5" font-size="9" text-anchor="end" fill="#a9a2ae">日</text>
-      <rect x="26" y="86" width="11" height="11" rx="2.5" fill="#f6dfe6"><title>2023-04-01 · 3 条消息 · 聊了 3 分钟（TA 2 / 我 1）</title></rect><rect x="26" y="100" width="11" height="11" rx="2.5" fill="#dd9ab2"><title>2023-04-02 · 5 条消息 · 聊了 11 分钟（TA 3 / 我 2）</title></rect><rect x="40" y="16" width="11" height="11" rx="2.5" fill="#eec2d1"><title>2023-04-03 · 5 条消息 · 聊了 4 分钟（TA 3 / 我 2）</title></rect><rect x="40" y="44" width="11" height="11" rx="2.5" fill="#f6dfe6"><title>2023-04-05 · 4 条消息 · 聊了 3 分钟（TA 2 / 我 2）</title></rect><rect x="40" y="86" width="11" height="11" rx="2.5" fill="#eec2d1"><title>2023-04-08 · 5 条消息 · 聊了 5 分钟（TA 3 / 我 2）</title></rect><rect x="54" y="44" width="11" height="11" rx="2.5" fill="#f6dfe6"><title>2023-04-12 · 5 条消息 · 聊了 2 分钟（TA 3 / 我 2）</title></rect><rect x="96" y="30" width="11" height="11" rx="2.5" fill="#eec2d1"><title>2023-05-02 · 4 条消息 · 聊了 4 分钟（TA 2 / 我 2）</title></rect><rect x="166" y="86" width="11" height="11" rx="2.5" fill="#f6dfe6"><title>2023-06-10 · 6 条消息 · 聊了 3 分钟（TA 3 / 我 3）</title></rect><rect x="236" y="86" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-07-15 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="236" y="100" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-07-16 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="306" y="100" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-08-20 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="320" y="16" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-08-21 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="348" y="30" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-09-05 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="348" y="44" width="11" height="11" rx="2.5" fill="#f6dfe6"><title>2023-09-06 · 3 条消息 · 聊了 1 分钟（TA 2 / 我 1）</title></rect><rect x="390" y="100" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-01 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="16" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-02 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="30" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-03 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="404" y="44" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-04 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="58" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-05 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="72" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-06 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="86" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-07 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="100" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-08 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="418" y="16" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-09 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="418" y="100" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-15 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="432" y="16" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-16 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="432" y="72" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-20 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="432" y="86" width="11" height="11" rx="2.5" fill="#f0ecee"><title>2023-10-21 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect>
+      <text x="26" y="11" font-size="9" fill="#928c98">3月</text><text x="40" y="11" font-size="9" fill="#928c98">4月</text><text x="96" y="11" font-size="9" fill="#928c98">5月</text><text x="166" y="11" font-size="9" fill="#928c98">6月</text><text x="222" y="11" font-size="9" fill="#928c98">7月</text><text x="292" y="11" font-size="9" fill="#928c98">8月</text><text x="348" y="11" font-size="9" fill="#928c98">9月</text><text x="404" y="11" font-size="9" fill="#928c98">10月</text>
+      <text x="20" y="24.5" font-size="9" text-anchor="end" fill="#928c98">一</text><text x="20" y="52.5" font-size="9" text-anchor="end" fill="#928c98">三</text><text x="20" y="80.5" font-size="9" text-anchor="end" fill="#928c98">五</text><text x="20" y="108.5" font-size="9" text-anchor="end" fill="#928c98">日</text>
+      <rect x="26" y="86" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-04-01 · 3 条消息 · 聊了 3 分钟（TA 2 / 我 1）</title></rect><rect x="26" y="100" width="11" height="11" rx="2.5" fill="#d08ea2"><title>2023-04-02 · 5 条消息 · 聊了 11 分钟（TA 3 / 我 2）</title></rect><rect x="40" y="16" width="11" height="11" rx="2.5" fill="#e2b9c5"><title>2023-04-03 · 5 条消息 · 聊了 4 分钟（TA 3 / 我 2）</title></rect><rect x="40" y="44" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-04-05 · 4 条消息 · 聊了 3 分钟（TA 2 / 我 2）</title></rect><rect x="40" y="86" width="11" height="11" rx="2.5" fill="#e2b9c5"><title>2023-04-08 · 5 条消息 · 聊了 5 分钟（TA 3 / 我 2）</title></rect><rect x="54" y="44" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-04-12 · 5 条消息 · 聊了 2 分钟（TA 3 / 我 2）</title></rect><rect x="96" y="30" width="11" height="11" rx="2.5" fill="#e2b9c5"><title>2023-05-02 · 4 条消息 · 聊了 4 分钟（TA 2 / 我 2）</title></rect><rect x="166" y="86" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-06-10 · 6 条消息 · 聊了 3 分钟（TA 3 / 我 3）</title></rect><rect x="236" y="86" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-07-15 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="236" y="100" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-07-16 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="306" y="100" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-08-20 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="320" y="16" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-08-21 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="348" y="30" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-09-05 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="348" y="44" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-09-06 · 3 条消息 · 聊了 1 分钟（TA 2 / 我 1）</title></rect><rect x="390" y="100" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-01 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="16" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-02 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="30" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-03 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="404" y="44" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-04 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="58" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-05 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="72" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-06 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="404" y="86" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-07 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="404" y="100" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-08 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="418" y="16" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-09 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect><rect x="418" y="100" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-15 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="432" y="16" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-16 · 2 条消息 · 聊了 0 秒（TA 1 / 我 1）</title></rect><rect x="432" y="72" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-20 · 1 条消息 · 聊了 0 秒（TA 0 / 我 1）</title></rect><rect x="432" y="86" width="11" height="11" rx="2.5" fill="#f0ecea"><title>2023-10-21 · 1 条消息 · 聊了 0 秒（TA 1 / 我 0）</title></rect>
     </svg>
   </div>
   <div class="heat-legend">
     <span class="tiny faint">颜色越深 = 当天聊得越久</span>
     <svg width="86" height="11" class="heat-scale" aria-hidden="true">
-      <rect x="0" y="0" width="11" height="11" rx="2.5" fill="#f0ecee"/><rect x="15" y="0" width="11" height="11" rx="2.5" fill="#f6dfe6"/><rect x="30" y="0" width="11" height="11" rx="2.5" fill="#eec2d1"/><rect x="45" y="0" width="11" height="11" rx="2.5" fill="#dd9ab2"/><rect x="60" y="0" width="11" height="11" rx="2.5" fill="#c96a8a"/><rect x="75" y="0" width="11" height="11" rx="2.5" fill="#a8455f"/>
+      <rect x="0" y="0" width="11" height="11" rx="2.5" fill="#f0ecea"/><rect x="15" y="0" width="11" height="11" rx="2.5" fill="#f0dde3"/><rect x="30" y="0" width="11" height="11" rx="2.5" fill="#e2b9c5"/><rect x="45" y="0" width="11" height="11" rx="2.5" fill="#d08ea2"/><rect x="60" y="0" width="11" height="11" rx="2.5" fill="#b4576f"/><rect x="75" y="0" width="11" height="11" rx="2.5" fill="#8e3d55"/>
     </svg>
     <span class="tiny faint">0 → 20 分钟</span>
   </div>
@@ -500,23 +767,27 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     悬停（手机上点按）可以看到当天明细。
   </p>
 </div>
-  </section>
-
-  <section>
-    <h2>你们都在聊什么</h2>
-    <p class="tiny faint">
+</section>
+    
+<section class="section" id="topics">
+  <div class="section-head">
+    <h2><span class="section-num">06</span>话题词云</h2>
+    <p class="section-desc">你们聊得最多的是什么</p>
+  </div>
+  
+    <p class="tiny faint" style="margin-bottom:12px">
       取聊天记录里出现最多的话题关键词。颜色表示这个话题主要由谁说起。
     </p>
     
 <div class="cloud-wrap">
   <svg viewBox="0 0 720 340" class="wordcloud" role="img"
        aria-label="话题词云，高频词：想你、晚安、吵架、到家、早安">
-    <text x="360.0" y="136.9" font-size="40.0" fill="#c96a8a" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>想你：出现 4 次，主要由阿澈说起</title>想你</text><text x="391.4" y="194.2" font-size="40.0" fill="#7b7480" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>晚安：出现 4 次，主要由双方说起</title>晚安</text><text x="306.4" y="192.3" font-size="40.0" fill="#7b7480" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>吵架：出现 4 次，主要由双方说起</title>吵架</text><text x="286.2" y="147.2" font-size="28.6" fill="#c96a8a" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>到家：出现 2 次，主要由阿澈说起</title>到家</text><text x="431.1" y="145.0" font-size="28.6" fill="#c96a8a" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>早安：出现 2 次，主要由阿澈说起</title>早安</text><text x="367.4" y="239.1" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>下班：出现 2 次，主要由我说起</title>下班</text><text x="464.8" y="184.0" font-size="28.6" fill="#c96a8a" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>开会：出现 2 次，主要由阿澈说起</title>开会</text><text x="335.4" y="91.4" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>夜宵：出现 2 次，主要由我说起</title>夜宵</text><text x="421.8" y="92.9" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>熬夜：出现 2 次，主要由我说起</title>熬夜</text><text x="306.6" y="240.8" font-size="28.6" fill="#c96a8a" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>陪你：出现 2 次，主要由阿澈说起</title>陪你</text><text x="436.7" y="239.0" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>海边：出现 2 次，主要由我说起</title>海边</text><text x="235.5" y="195.7" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>加班：出现 2 次，主要由我说起</title>加班</text><text x="225.8" y="155.8" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>吃饭：出现 2 次，主要由我说起</title>吃饭</text><text x="261.5" y="108.9" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>周末：出现 2 次，主要由我说起</title>周末</text><text x="492.9" y="144.6" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>生日：出现 2 次，主要由我说起</title>生日</text><text x="374.5" y="277.2" font-size="28.6" fill="#7fa8c9" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>礼物：出现 2 次，主要由我说起</title>礼物</text><text x="249.6" y="244.1" font-size="24.5" fill="#c96a8a" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>最近：出现 3 次，主要由阿澈说起</title>最近</text><text x="329.8" y="54.8" font-size="24.3" fill="#7b7480" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>想太多了：出现 2 次，主要由双方说起</title>想太多了</text><text x="491.5" y="98.5" font-size="23.9" fill="#c96a8a" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>呆呆的：出现 2 次，主要由阿澈说起</title>呆呆的</text><text x="505.6" y="220.2" font-size="23.9" fill="#7b7480" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>那我们：出现 2 次，主要由双方说起</title>那我们</text><text x="441.5" y="273.1" font-size="23.9" fill="#7b7480" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>想吵架：出现 2 次，主要由双方说起</title>想吵架</text><text x="321.3" y="279.0" font-size="21.2" fill="#7b7480" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>早点：出现 2 次，主要由双方说起</title>早点</text><text x="420.0" y="58.8" font-size="21.2" fill="#c96a8a" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>安宝：出现 2 次，主要由阿澈说起</title>安宝</text><text x="208.0" y="119.3" font-size="21.2" fill="#7b7480" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>辛苦：出现 2 次，主要由双方说起</title>辛苦</text><text x="273.9" y="286.6" font-size="21.2" fill="#c96a8a" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>去吃：出现 2 次，主要由阿澈说起</title>去吃</text><text x="538.1" y="178.8" font-size="21.2" fill="#7b7480" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>记得：出现 2 次，主要由双方说起</title>记得</text><text x="252.3" y="73.5" font-size="21.2" fill="#7b7480" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>去哪：出现 2 次，主要由双方说起</title>去哪</text>
+    <text x="360.0" y="136.9" font-size="40.0" fill="#b4576f" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>想你：出现 4 次，主要由阿澈说起</title>想你</text><text x="391.4" y="194.2" font-size="40.0" fill="#5f5966" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>晚安：出现 4 次，主要由双方说起</title>晚安</text><text x="306.4" y="192.3" font-size="40.0" fill="#5f5966" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>吵架：出现 4 次，主要由双方说起</title>吵架</text><text x="286.2" y="147.2" font-size="28.6" fill="#b4576f" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>到家：出现 2 次，主要由阿澈说起</title>到家</text><text x="431.1" y="145.0" font-size="28.6" fill="#b4576f" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>早安：出现 2 次，主要由阿澈说起</title>早安</text><text x="367.4" y="239.1" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>下班：出现 2 次，主要由我说起</title>下班</text><text x="464.8" y="184.0" font-size="28.6" fill="#b4576f" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>开会：出现 2 次，主要由阿澈说起</title>开会</text><text x="335.4" y="91.4" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>夜宵：出现 2 次，主要由我说起</title>夜宵</text><text x="421.8" y="92.9" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>熬夜：出现 2 次，主要由我说起</title>熬夜</text><text x="306.6" y="240.8" font-size="28.6" fill="#b4576f" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>陪你：出现 2 次，主要由阿澈说起</title>陪你</text><text x="436.7" y="239.0" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>海边：出现 2 次，主要由我说起</title>海边</text><text x="235.5" y="195.7" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>加班：出现 2 次，主要由我说起</title>加班</text><text x="225.8" y="155.8" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>吃饭：出现 2 次，主要由我说起</title>吃饭</text><text x="261.5" y="108.9" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>周末：出现 2 次，主要由我说起</title>周末</text><text x="492.9" y="144.6" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>生日：出现 2 次，主要由我说起</title>生日</text><text x="374.5" y="277.2" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>礼物：出现 2 次，主要由我说起</title>礼物</text><text x="249.6" y="244.1" font-size="24.5" fill="#b4576f" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>最近：出现 3 次，主要由阿澈说起</title>最近</text><text x="329.8" y="54.8" font-size="24.3" fill="#5f5966" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>想太多了：出现 2 次，主要由双方说起</title>想太多了</text><text x="491.5" y="98.5" font-size="23.9" fill="#b4576f" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>呆呆的：出现 2 次，主要由阿澈说起</title>呆呆的</text><text x="505.6" y="220.2" font-size="23.9" fill="#5f5966" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>那我们：出现 2 次，主要由双方说起</title>那我们</text><text x="441.5" y="273.1" font-size="23.9" fill="#5f5966" opacity="0.74" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>想吵架：出现 2 次，主要由双方说起</title>想吵架</text><text x="321.3" y="279.0" font-size="21.2" fill="#5f5966" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>早点：出现 2 次，主要由双方说起</title>早点</text><text x="420.0" y="58.8" font-size="21.2" fill="#b4576f" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>安宝：出现 2 次，主要由阿澈说起</title>安宝</text><text x="208.0" y="119.3" font-size="21.2" fill="#5f5966" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>辛苦：出现 2 次，主要由双方说起</title>辛苦</text><text x="273.9" y="286.6" font-size="21.2" fill="#b4576f" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>去吃：出现 2 次，主要由阿澈说起</title>去吃</text><text x="538.1" y="178.8" font-size="21.2" fill="#5f5966" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>记得：出现 2 次，主要由双方说起</title>记得</text><text x="252.3" y="73.5" font-size="21.2" fill="#5f5966" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>去哪：出现 2 次，主要由双方说起</title>去哪</text>
   </svg>
   <div class="legend">
-    <span><i style="background:#c96a8a"></i>阿澈说得更多</span>
-    <span><i style="background:#7fa8c9"></i>我说得更多</span>
-    <span><i style="background:#7b7480"></i>双方相当</span>
+    <span><i style="background:#b4576f"></i>阿澈说得更多</span>
+    <span><i style="background:#4f7fa0"></i>我说得更多</span>
+    <span><i style="background:#5f5966"></i>双方相当</span>
   </div>
   <p class="tiny faint">
     字号 = 该词在 64 条消息里的加权出现频次（话题种子词加权更高）；
@@ -524,11 +795,14 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     所以偶尔会出现切歪的片段——只当参考，不当结论。
   </p>
 </div>
-  </section>
-
-  <section>
-    <h2>阿澈 是一个怎样的人</h2>
+</section>
     
+<section class="section" id="persona">
+  <div class="section-head">
+    <h2><span class="section-num">07</span>阿澈 是怎样的人</h2>
+    <p class="section-desc">基于可观测行为，不是性格判断</p>
+  </div>
+  
 <div class="persona-wrap">
   <p class="persona-note tiny">
     下面每一条都只描述 <b>阿澈</b> 在这份记录里的<b>可观测行为</b>，
@@ -538,323 +812,334 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
   <div class="persona-grid">
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#7b7480">夜晚型</span>
-        <span class="persona-tone tiny" style="background:#7b74801f;color:#7b7480">
+        <span class="persona-label" style="color:#5f5966">夜晚型</span>
+        <span class="persona-tone tiny" style="background:#5f59661f;color:#5f5966">
           中性</span>
       </div>
       <p class="persona-text">TA 有 65% 的消息在 18:00 之后，白天基本不出现</p>
-      <div class="persona-bar"><div style="width:100%;background:#7b7480"></div></div>
+      <div class="persona-bar"><div style="width:100%;background:#5f5966"></div></div>
       <span class="persona-support tiny faint">22 / 34 条在晚间</span>
     </article>
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#7fa8c9">忽冷忽热型</span>
-        <span class="persona-tone tiny" style="background:#7fa8c91f;color:#7fa8c9">
+        <span class="persona-label" style="color:#4f7fa0">忽冷忽热型</span>
+        <span class="persona-tone tiny" style="background:#4f7fa01f;color:#4f7fa0">
           偏疏离</span>
       </div>
       <p class="persona-text">聊天量月度波动很大：最多的一个月 27 条，最少的只有 3 条</p>
-      <div class="persona-bar"><div style="width:89%;background:#7fa8c9"></div></div>
+      <div class="persona-bar"><div style="width:89%;background:#4f7fa0"></div></div>
       <span class="persona-support tiny faint">波动幅度 89%</span>
     </article>
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#c96a8a">主动型</span>
-        <span class="persona-tone tiny" style="background:#c96a8a1f;color:#c96a8a">
+        <span class="persona-label" style="color:#b4576f">主动型</span>
+        <span class="persona-tone tiny" style="background:#b4576f1f;color:#b4576f">
           偏积极</span>
       </div>
       <p class="persona-text">36 段对话里有 20 段是 TA 先开口（56%）</p>
-      <div class="persona-bar"><div style="width:79%;background:#c96a8a"></div></div>
+      <div class="persona-bar"><div style="width:79%;background:#b4576f"></div></div>
       <span class="persona-support tiny faint">20 / 36 段</span>
     </article>
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#c96a8a">秒回型</span>
-        <span class="persona-tone tiny" style="background:#c96a8a1f;color:#c96a8a">
+        <span class="persona-label" style="color:#b4576f">秒回型</span>
+        <span class="persona-tone tiny" style="background:#b4576f1f;color:#b4576f">
           偏积极</span>
       </div>
       <p class="persona-text">中位回复只要 2 分钟，54% 的回复在 5 分钟内</p>
-      <div class="persona-bar"><div style="width:75%;background:#c96a8a"></div></div>
+      <div class="persona-bar"><div style="width:75%;background:#b4576f"></div></div>
       <span class="persona-support tiny faint">26 次回复，中位 2 分钟</span>
     </article>
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#7fa8c9">等你先开口型</span>
-        <span class="persona-tone tiny" style="background:#7fa8c91f;color:#7fa8c9">
+        <span class="persona-label" style="color:#4f7fa0">等你先开口型</span>
+        <span class="persona-tone tiny" style="background:#4f7fa01f;color:#4f7fa0">
           偏疏离</span>
       </div>
       <p class="persona-text">16 次超过一天的沉默里，TA 主动打破了 6 次（38%）</p>
-      <div class="persona-bar"><div style="width:65%;background:#7fa8c9"></div></div>
+      <div class="persona-bar"><div style="width:65%;background:#4f7fa0"></div></div>
       <span class="persona-support tiny faint">6 / 16 次</span>
     </article>
     <article class="persona-card">
       <div class="persona-head">
-        <span class="persona-label" style="color:#7b7480">纯文字型</span>
-        <span class="persona-tone tiny" style="background:#7b74801f;color:#7b7480">
+        <span class="persona-label" style="color:#5f5966">纯文字型</span>
+        <span class="persona-tone tiny" style="background:#5f59661f;color:#5f5966">
           中性</span>
       </div>
       <p class="persona-text">TA 从不发表情，全程纯文字</p>
-      <div class="persona-bar"><div style="width:50%;background:#7b7480"></div></div>
+      <div class="persona-bar"><div style="width:50%;background:#5f5966"></div></div>
       <span class="persona-support tiny faint">0 / 34 条带表情</span>
     </article></div>
 </div>
-  </section>
-
-  <section>
-    <h2>关键节点</h2>
-    <p class="tiny faint">
+</section>
+    
+<section class="section" id="timeline">
+  <div class="section-head">
+    <h2><span class="section-num">08</span>关键节点</h2>
+    <p class="section-desc">这段关系里值得记下来的时刻</p>
+  </div>
+  
+    <p class="tiny faint" style="margin-bottom:12px">
       这段关系里值得被记下来的时刻，按时间排列。
     </p>
     <ol class="timeline">
     <li class="tl-node">
-      <span class="tl-dot" style="background:#c96a8a"></span>
+      <span class="tl-dot" style="background:#b4576f"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#c96a8a">聊得最多的月份</span>
+          <span class="tl-title" style="color:#b4576f">聊得最多的月份</span>
           <span class="tl-when">2023-04-01</span>
         </div>
         <p class="tl-detail">2023 年 4 月：27 条消息，6 天有对话</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#7fb99a"></span>
+      <span class="tl-dot" style="background:#4f8a6b"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#7fb99a">第一次说话</span>
+          <span class="tl-title" style="color:#4f8a6b">第一次说话</span>
           <span class="tl-when">2023-04-01</span>
         </div>
         <p class="tl-detail">阿澈：「到家了跟我说一声」</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#7fb99a"></span>
+      <span class="tl-dot" style="background:#4f8a6b"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#7fb99a">最暖的一天</span>
+          <span class="tl-title" style="color:#4f8a6b">最暖的一天</span>
           <span class="tl-when">2023-04-02</span>
         </div>
         <p class="tl-detail">情绪均分 +0.49（越高越暖）</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#d9a441"></span>
+      <span class="tl-dot" style="background:#b07d34"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#d9a441">最长的一次聊天</span>
+          <span class="tl-title" style="color:#b07d34">最长的一次聊天</span>
           <span class="tl-when">2023-04-02 08:12</span>
         </div>
         <p class="tl-detail">从 08:12 聊到 08:23，共 11 分钟、5 条消息</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#d9a441"></span>
+      <span class="tl-dot" style="background:#b07d34"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#d9a441">聊得最久的一天</span>
+          <span class="tl-title" style="color:#b07d34">聊得最久的一天</span>
           <span class="tl-when">2023-04-02</span>
         </div>
         <p class="tl-detail">各段对话加起来 11 分钟、5 条消息</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#7fa8c9"></span>
+      <span class="tl-dot" style="background:#4f7fa0"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#7fa8c9">最冷的一天</span>
+          <span class="tl-title" style="color:#4f7fa0">最冷的一天</span>
           <span class="tl-when">2023-04-08</span>
         </div>
         <p class="tl-detail">情绪均分 -0.12</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#7fa8c9"></span>
+      <span class="tl-dot" style="background:#4f7fa0"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#7fa8c9">最长的一次沉默</span>
+          <span class="tl-title" style="color:#4f7fa0">最长的一次沉默</span>
           <span class="tl-when">2023-05-02</span>
         </div>
         <p class="tl-detail">从 2023-05-02 到 2023-06-10，整整 1.3 个月 没有说话；最后由我打破</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#c96a8a"></span>
+      <span class="tl-dot" style="background:#b4576f"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#c96a8a">最热闹的一天</span>
+          <span class="tl-title" style="color:#b4576f">最热闹的一天</span>
           <span class="tl-when">2023-06-10</span>
         </div>
         <p class="tl-detail">6 条消息，聊了 92 分钟</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#a9a2ae"></span>
+      <span class="tl-dot" style="background:#928c98"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#a9a2ae">最安静的月份</span>
+          <span class="tl-title" style="color:#928c98">最安静的月份</span>
           <span class="tl-when">2023-07-01</span>
         </div>
         <p class="tl-detail">2023 年 7 月：只有 3 条消息</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#e0a06a"></span>
+      <span class="tl-dot" style="background:#b5793a"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#e0a06a">热度转折点</span>
+          <span class="tl-title" style="color:#b5793a">热度转折点</span>
           <span class="tl-when">2023-08-01</span>
         </div>
         <p class="tl-detail">以 2023 年 8 月 为界，前后两个月的聊天量变多了 122%</p>
       </div>
     </li>
     <li class="tl-node">
-      <span class="tl-dot" style="background:#7b7480"></span>
+      <span class="tl-dot" style="background:#5f5966"></span>
       <div class="tl-body">
         <div class="tl-head">
-          <span class="tl-title" style="color:#7b7480">最后一次说话</span>
+          <span class="tl-title" style="color:#5f5966">最后一次说话</span>
           <span class="tl-when">2023-10-21</span>
         </div>
         <p class="tl-detail">阿澈：「嗯」</p>
       </div>
     </li></ol>
-  </section>
-
-  <section>
-    <h2>八维雷达图</h2>
-    <div class="card">
-      
+</section>
+    
+<section class="section" id="radar">
+  <div class="section-head">
+    <h2><span class="section-num">09</span>八维雷达图</h2>
+    <p class="section-desc">八个描述性维度的双方对比</p>
+  </div>
+  <div class="card">
 <svg viewBox="0 0 520 400" class="radar" role="img" aria-label="八维雷达图">
-  <polygon points="260.0,170.5 280.9,179.1 289.5,200.0 280.9,220.9 260.0,229.5 239.1,220.9 230.5,200.0 239.1,179.1" fill="none" stroke="#ece6e8" stroke-width="1"/><polygon points="260.0,141.0 301.7,158.3 319.0,200.0 301.7,241.7 260.0,259.0 218.3,241.7 201.0,200.0 218.3,158.3" fill="none" stroke="#ece6e8" stroke-width="1"/><polygon points="260.0,111.5 322.6,137.4 348.5,200.0 322.6,262.6 260.0,288.5 197.4,262.6 171.5,200.0 197.4,137.4" fill="none" stroke="#ece6e8" stroke-width="1"/><polygon points="260.0,82.0 343.4,116.6 378.0,200.0 343.4,283.4 260.0,318.0 176.6,283.4 142.0,200.0 176.6,116.6" fill="none" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="82.0" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="116.6" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="378.0" y2="200.0" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="283.4" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="318.0" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="283.4" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="142.0" y2="200.0" stroke="#ece6e8" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="116.6" stroke="#ece6e8" stroke-width="1"/>
-  <polygon points="260.0,116.0 328.5,131.5 331.1,200.0 319.1,259.1 260.0,200.0 206.4,146.4" fill="#7fa8c933" stroke="#7fa8c9" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="116.0" r="3" fill="#7fa8c9"/><circle cx="328.5" cy="131.5" r="3" fill="#7fa8c9"/><circle cx="331.1" cy="200.0" r="3" fill="#7fa8c9"/><circle cx="319.1" cy="259.1" r="3" fill="#7fa8c9"/><circle cx="260.0" cy="200.0" r="3" fill="#7fa8c9"/><circle cx="206.4" cy="146.4" r="3" fill="#7fa8c9"/>
-  <polygon points="260.0,130.0 323.8,136.2 331.2,200.0 312.2,252.2 260.0,211.6 243.5,216.5 142.0,200.0 220.4,160.4" fill="#c96a8a3d" stroke="#c96a8a" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="130.0" r="3" fill="#c96a8a"/><circle cx="323.8" cy="136.2" r="3" fill="#c96a8a"/><circle cx="331.2" cy="200.0" r="3" fill="#c96a8a"/><circle cx="312.2" cy="252.2" r="3" fill="#c96a8a"/><circle cx="260.0" cy="211.6" r="3" fill="#c96a8a"/><circle cx="243.5" cy="216.5" r="3" fill="#c96a8a"/><circle cx="142.0" cy="200.0" r="3" fill="#c96a8a"/><circle cx="220.4" cy="160.4" r="3" fill="#c96a8a"/>
-  <text x="260.0" y="48.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#7b7480">回复速度</text><text x="367.5" y="92.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#7b7480">主动发起</text><text x="412.0" y="200.0" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#7b7480">平均字数</text><text x="367.5" y="307.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#7b7480">提问追问</text><text x="260.0" y="352.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#7b7480">称呼表情</text><text x="152.5" y="307.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#7b7480">谁在收尾</text><text x="108.0" y="200.0" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#7b7480">深夜活跃</text><text x="152.5" y="92.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#7b7480">情绪走向</text>
+  <polygon points="260.0,170.5 280.9,179.1 289.5,200.0 280.9,220.9 260.0,229.5 239.1,220.9 230.5,200.0 239.1,179.1" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,141.0 301.7,158.3 319.0,200.0 301.7,241.7 260.0,259.0 218.3,241.7 201.0,200.0 218.3,158.3" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,111.5 322.6,137.4 348.5,200.0 322.6,262.6 260.0,288.5 197.4,262.6 171.5,200.0 197.4,137.4" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,82.0 343.4,116.6 378.0,200.0 343.4,283.4 260.0,318.0 176.6,283.4 142.0,200.0 176.6,116.6" fill="none" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="82.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="116.6" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="378.0" y2="200.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="283.4" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="318.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="283.4" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="142.0" y2="200.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="116.6" stroke="#e7e2df" stroke-width="1"/>
+  <polygon points="260.0,116.0 328.5,131.5 331.1,200.0 319.1,259.1 260.0,200.0 206.4,146.4" fill="#4f7fa033" stroke="#4f7fa0" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="116.0" r="3" fill="#4f7fa0"/><circle cx="328.5" cy="131.5" r="3" fill="#4f7fa0"/><circle cx="331.1" cy="200.0" r="3" fill="#4f7fa0"/><circle cx="319.1" cy="259.1" r="3" fill="#4f7fa0"/><circle cx="260.0" cy="200.0" r="3" fill="#4f7fa0"/><circle cx="206.4" cy="146.4" r="3" fill="#4f7fa0"/>
+  <polygon points="260.0,130.0 323.8,136.2 331.2,200.0 312.2,252.2 260.0,211.6 243.5,216.5 142.0,200.0 220.4,160.4" fill="#b4576f3d" stroke="#b4576f" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="130.0" r="3" fill="#b4576f"/><circle cx="323.8" cy="136.2" r="3" fill="#b4576f"/><circle cx="331.2" cy="200.0" r="3" fill="#b4576f"/><circle cx="312.2" cy="252.2" r="3" fill="#b4576f"/><circle cx="260.0" cy="211.6" r="3" fill="#b4576f"/><circle cx="243.5" cy="216.5" r="3" fill="#b4576f"/><circle cx="142.0" cy="200.0" r="3" fill="#b4576f"/><circle cx="220.4" cy="160.4" r="3" fill="#b4576f"/>
+  <text x="260.0" y="48.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#5f5966">回复速度</text><text x="367.5" y="92.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">主动发起</text><text x="412.0" y="200.0" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">平均字数</text><text x="367.5" y="307.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">提问追问</text><text x="260.0" y="352.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#5f5966">称呼表情</text><text x="152.5" y="307.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#5f5966">谁在收尾</text><text x="108.0" y="200.0" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#5f5966">深夜活跃</text><text x="152.5" y="92.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#5f5966">情绪走向</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#c96a8a"></i>阿澈（TA）</span>
-  <span><i style="background:#7fa8c9"></i>我（我）</span>
+  <span><i style="background:#b4576f"></i>阿澈（TA）</span>
+  <span><i style="background:#4f7fa0"></i>我（我）</span>
   <span class="faint">标注 N/A = 该维度样本不足，不参与打分</span>
-</div>
-    </div>
-  </section>
-
-  <section>
-    <h2>维度明细</h2>
-    <div class="dim-grid">
+</div></div>
+</section>
+    
+<section class="section" id="dimensions">
+  <div class="section-head">
+    <h2><span class="section-num">10</span>维度明细</h2>
+    <p class="section-desc">每个维度的子指标数据</p>
+  </div>
+  <div class="dim-grid">
   <article class="dim-card">
     <h3>回复间隔与响应速度</h3>
     
     <p class="dim-summary">双方回复节奏接近：TA 2 分钟，你 1 分钟。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:59.3%;background:#c96a8a"></div></div><em style="color:#c96a8a">59</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:71.2%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">71</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:59.3%;background:#b4576f"></div></div><em style="color:#b4576f">59</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:71.2%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">71</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 的中位回复间隔</span><span class="chip-val">2 分钟</span></div><div class="chip"><span class="chip-label">你的中位回复间隔</span><span class="chip-val">1 分钟</span></div><div class="chip"><span class="chip-label">TA 的 5 分钟内回复率</span><span class="chip-val">54%</span></div><div class="chip"><span class="chip-label">你的 5 分钟内回复率</span><span class="chip-val">65%</span></div><div class="chip"><span class="chip-label">TA 超过 1 小时才回的比例</span><span class="chip-val">38%</span></div><div class="chip"><span class="chip-label">你超过 1 小时才回的比例</span><span class="chip-val">30%</span></div><div class="chip"><span class="chip-label">回复速度不对称度</span><span class="chip-val">1.51×</span><span class="chip-note">数值 = TA 的中位回复间隔 ÷ 你的</span></div></div>
   </article>
   <article class="dim-card">
     <h3>主动发起对话次数</h3>
     
     <p class="dim-summary">双方发起次数接近：30 轮里 TA 占 47%。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:76.5%;background:#c96a8a"></div></div><em style="color:#c96a8a">77</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:82.1%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">82</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:76.5%;background:#b4576f"></div></div><em style="color:#b4576f">77</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:82.1%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">82</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 主动开口的轮次占比</span><span class="chip-val">47%</span><span class="chip-note">共 30 轮（静默 6 小时算新的一轮）</span></div><div class="chip"><span class="chip-label">你主动开口的轮次占比</span><span class="chip-val">53%</span></div><div class="chip"><span class="chip-label">TA 的连续发言段占比</span><span class="chip-val">53%</span><span class="chip-note">共 64 段</span></div><div class="chip chip-na"><span class="chip-label">你的连续发言段占比</span><span class="chip-val">47%</span></div><div class="chip"><span class="chip-label">TA 占每日首条消息的比例</span><span class="chip-val">41%</span><span class="chip-note">有消息的天数 27 天</span></div><div class="chip chip-na"><span class="chip-label">你占每日首条消息的比例</span><span class="chip-val">59%</span></div><div class="chip"><span class="chip-label">TA 的「冷启动」次数</span><span class="chip-val">14 次</span><span class="chip-note">静默后主动开口</span></div></div>
   </article>
   <article class="dim-card">
     <h3>平均字数与投入度</h3>
     
     <p class="dim-summary">双方字数相当：TA 平均 5.8 字，你 7.4 字。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:60.4%;background:#c96a8a"></div></div><em style="color:#c96a8a">60</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:60.3%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">60</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:60.4%;background:#b4576f"></div></div><em style="color:#b4576f">60</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:60.3%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">60</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 平均每条消息字数</span><span class="chip-val">5.8 字</span></div><div class="chip"><span class="chip-label">你平均每条消息字数</span><span class="chip-val">7.4 字</span></div><div class="chip"><span class="chip-label">TA 的实质性消息平均字数</span><span class="chip-val">8.7 字</span><span class="chip-note">实质性消息 16 条（≥6 字且非敷衍语）</span></div><div class="chip"><span class="chip-label">你的实质性消息平均字数</span><span class="chip-val">9.0 字</span><span class="chip-note">实质性消息 21 条</span></div><div class="chip"><span class="chip-label">实质性消息字数比（TA ÷ 你）</span><span class="chip-val">0.97×</span></div><div class="chip"><span class="chip-label">TA 的极短消息（≤3 字）占比</span><span class="chip-val">29%</span><span class="chip-note">如「嗯」「哦」「好」</span></div><div class="chip chip-na"><span class="chip-label">你的极短消息占比</span><span class="chip-val">10%</span></div></div>
   </article>
   <article class="dim-card">
     <h3>提问与追问比例</h3>
     
     <p class="dim-summary">你更常发问：你有 53% 的消息是提问，TA 只有 21%。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:62.5%;background:#c96a8a"></div></div><em style="color:#c96a8a">63</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:70.8%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">71</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:62.5%;background:#b4576f"></div></div><em style="color:#b4576f">63</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:70.8%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">71</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 的消息中提问占比</span><span class="chip-val">21%</span><span class="chip-note">提问 7 条 / 共 34 条</span></div><div class="chip"><span class="chip-label">你的消息中提问占比</span><span class="chip-val">53%</span></div><div class="chip"><span class="chip-label">TA 提问后的追问率</span><span class="chip-val">71%</span><span class="chip-note">提问后 10 分钟内继续说</span></div><div class="chip"><span class="chip-label">你的追问率</span><span class="chip-val">25%</span></div><div class="chip"><span class="chip-label">TA 的提问里没被回应的比例</span><span class="chip-val">29%</span><span class="chip-note">2 小时内没有收到你的回复</span></div><div class="chip"><span class="chip-label">提问占比之比（TA ÷ 你）</span><span class="chip-val">0.39×</span></div></div>
   </article>
   <article class="dim-card">
     <h3>称呼与表情使用</h3>
     
     <p class="dim-summary">TA 最后一次叫你亲昵称呼，距今已经占了整段记录的 99%。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:9.8%;background:#c96a8a"></div></div><em style="color:#c96a8a">10</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:1.0%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">0</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:9.8%;background:#b4576f"></div></div><em style="color:#b4576f">10</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:1.0%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">0</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 使用亲昵称呼的消息占比</span><span class="chip-val">6%</span><span class="chip-note">命中 2 条</span></div><div class="chip"><span class="chip-label">你使用亲昵称呼的消息占比</span><span class="chip-val">0%</span><span class="chip-note">命中 0 条</span></div><div class="chip"><span class="chip-label">TA 的表情/表情包使用率</span><span class="chip-val">0%</span></div><div class="chip"><span class="chip-label">你的表情使用率</span><span class="chip-val">0%</span></div><div class="chip chip-na"><span class="chip-label">TA 的亲昵称呼随时间的变化</span><span class="chip-val">+0.00</span><span class="chip-note">正数=越来越亲昵，负数=在降温</span></div><div class="chip"><span class="chip-label">TA 最后一次叫你亲昵称呼距今占比</span><span class="chip-val">99%</span><span class="chip-note">0% = 最近还在叫，接近 100% = 很久没叫了</span></div></div>
   </article>
   <article class="dim-card">
     <h3>谁在结束对话</h3>
     
     <p class="dim-summary">多数对话由 TA 收尾（30 轮里占 67%）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:19.7%;background:#c96a8a"></div></div><em style="color:#c96a8a">20</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:19.7%;background:#b4576f"></div></div><em style="color:#b4576f">20</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 结束对话的比例</span><span class="chip-val">67%</span><span class="chip-note">共 30 轮对话</span></div><div class="chip chip-na"><span class="chip-label">你结束对话的比例</span><span class="chip-val">33%</span></div><div class="chip"><span class="chip-label">TA 忽略你的提问、直接走开的比例</span><span class="chip-val">44%</span><span class="chip-note">你的提问 16 次</span></div><div class="chip chip-na"><span class="chip-label">你忽略 TA 提问的比例</span><span class="chip-val">29%</span><span class="chip-note">TA 的提问 7 次</span></div><div class="chip"><span class="chip-label">TA 用收尾语结束的次数</span><span class="chip-val">1 次</span><span class="chip-note">如「晚安」「我先忙」</span></div></div>
   </article>
   <article class="dim-card">
     <h3>深夜及特定时段活跃度</h3>
     
     <p class="dim-summary">深夜（23:00–03:00）共 8 条，其中 TA 占 75%。TA 最活跃在晚上 18-24，你最活跃在晚上 18-24。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:100.0%;background:#c96a8a"></div></div><em style="color:#c96a8a">100</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:100.0%;background:#b4576f"></div></div><em style="color:#b4576f">100</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 的深夜消息占比</span><span class="chip-val">18%</span><span class="chip-note">23:00–03:00</span></div><div class="chip chip-na"><span class="chip-label">你的深夜消息占比</span><span class="chip-val">7%</span></div><div class="chip"><span class="chip-label">深夜时段里 TA 的发言占比</span><span class="chip-val">75%</span><span class="chip-note">深夜共 8 条</span></div><div class="chip chip-na"><span class="chip-label">TA 最活跃的时段</span><span class="chip-val">晚上 18-24</span></div><div class="chip chip-na"><span class="chip-label">你最活跃的时段</span><span class="chip-val">晚上 18-24</span></div></div>
   </article>
   <article class="dim-card">
     <h3>情绪倾向随时间变化</h3>
     
     <p class="dim-summary">TA 的情绪在变冷：后半段比前半段低 0.38（平均 +0.14）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:47.5%;background:#c96a8a"></div></div><em style="color:#c96a8a">48</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:64.2%;background:#7fa8c9"></div></div><em style="color:#7fa8c9">64</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:47.5%;background:#b4576f"></div></div><em style="color:#b4576f">48</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:64.2%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">64</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 消息的平均情绪分</span><span class="chip-val">+0.14</span><span class="chip-note">范围 -1（冷）~ +1（暖）</span></div><div class="chip"><span class="chip-label">你的平均情绪分</span><span class="chip-val">+0.05</span></div><div class="chip"><span class="chip-label">TA 的情绪走向</span><span class="chip-val">-0.38</span><span class="chip-note">后半段平均 − 前半段平均；负数=在变冷</span></div><div class="chip"><span class="chip-label">你的情绪走向</span><span class="chip-val">+0.13</span></div><div class="chip"><span class="chip-label">TA 的强负向消息占比</span><span class="chip-val">3%</span><span class="chip-note">情绪分 ≤ -0.5，如吵架、冷淡</span></div></div>
   </article></div>
-  </section>
-
-  <section>
-    <h2>互动趋势</h2>
-    <div class="chart-grid">
+</section>
+    
+<section class="section" id="trends">
+  <div class="section-head">
+    <h2><span class="section-num">11</span>互动趋势</h2>
+    <p class="section-desc">消息量 / 主动发起 / 情绪 / 回复速度</p>
+  </div>
+  <div class="chart-grid">
 <div class="chart-card">
   <h4>消息量走势</h4>
   <p class="tiny faint">每一段的双方消息条数</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="消息量走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">1</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">8</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">12</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">16</text>
-    <path d="M 42.0 18.0 L 142.7 146.8 L 243.3 137.6 L 344.0 156.0 L 444.7 146.8 L 545.3 146.8 L 646.0 91.6" fill="none" stroke="#c96a8a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="18.0" r="2.8" fill="#c96a8a"/><circle cx="142.7" cy="146.8" r="2.8" fill="#c96a8a"/><circle cx="243.3" cy="137.6" r="2.8" fill="#c96a8a"/><circle cx="344.0" cy="156.0" r="2.8" fill="#c96a8a"/><circle cx="444.7" cy="146.8" r="2.8" fill="#c96a8a"/><circle cx="545.3" cy="146.8" r="2.8" fill="#c96a8a"/><circle cx="646.0" cy="91.6" r="2.8" fill="#c96a8a"/><path d="M 42.0 64.0 L 142.7 146.8 L 243.3 137.6 L 344.0 146.8 L 444.7 146.8 L 545.3 146.8 L 646.0 91.6" fill="none" stroke="#7fa8c9" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="64.0" r="2.8" fill="#7fa8c9"/><circle cx="142.7" cy="146.8" r="2.8" fill="#7fa8c9"/><circle cx="243.3" cy="137.6" r="2.8" fill="#7fa8c9"/><circle cx="344.0" cy="146.8" r="2.8" fill="#7fa8c9"/><circle cx="444.7" cy="146.8" r="2.8" fill="#7fa8c9"/><circle cx="545.3" cy="146.8" r="2.8" fill="#7fa8c9"/><circle cx="646.0" cy="91.6" r="2.8" fill="#7fa8c9"/>
-    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">9/28</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">1</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">8</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">12</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">16</text>
+    <path d="M 42.0 18.0 L 142.7 146.8 L 243.3 137.6 L 344.0 156.0 L 444.7 146.8 L 545.3 146.8 L 646.0 91.6" fill="none" stroke="#b4576f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="18.0" r="2.8" fill="#b4576f"/><circle cx="142.7" cy="146.8" r="2.8" fill="#b4576f"/><circle cx="243.3" cy="137.6" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#b4576f"/><circle cx="444.7" cy="146.8" r="2.8" fill="#b4576f"/><circle cx="545.3" cy="146.8" r="2.8" fill="#b4576f"/><circle cx="646.0" cy="91.6" r="2.8" fill="#b4576f"/><path d="M 42.0 64.0 L 142.7 146.8 L 243.3 137.6 L 344.0 146.8 L 444.7 146.8 L 545.3 146.8 L 646.0 91.6" fill="none" stroke="#4f7fa0" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="64.0" r="2.8" fill="#4f7fa0"/><circle cx="142.7" cy="146.8" r="2.8" fill="#4f7fa0"/><circle cx="243.3" cy="137.6" r="2.8" fill="#4f7fa0"/><circle cx="344.0" cy="146.8" r="2.8" fill="#4f7fa0"/><circle cx="444.7" cy="146.8" r="2.8" fill="#4f7fa0"/><circle cx="545.3" cy="146.8" r="2.8" fill="#4f7fa0"/><circle cx="646.0" cy="91.6" r="2.8" fill="#4f7fa0"/>
+    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">9/28</text>
   </svg>
-  <div class="legend"><span><i style="background:#c96a8a"></i>阿澈</span><span><i style="background:#7fa8c9"></i>我</span></div>
+  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
 </div>
 <div class="chart-card">
   <h4>谁在主动开口</h4>
   <p class="tiny faint">每一段里由谁开启的对话轮次</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="谁在主动开口">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">2</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">4</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">6</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">8</text>
-    <path d="M 42.0 69.8 L 142.7 156.0 L 243.3 156.0 L 344.0 156.0 L 444.7 138.8 L 545.3 138.8 L 646.0 35.2" fill="none" stroke="#c96a8a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="69.8" r="2.8" fill="#c96a8a"/><circle cx="142.7" cy="156.0" r="2.8" fill="#c96a8a"/><circle cx="243.3" cy="156.0" r="2.8" fill="#c96a8a"/><circle cx="344.0" cy="156.0" r="2.8" fill="#c96a8a"/><circle cx="444.7" cy="138.8" r="2.8" fill="#c96a8a"/><circle cx="545.3" cy="138.8" r="2.8" fill="#c96a8a"/><circle cx="646.0" cy="35.2" r="2.8" fill="#c96a8a"/><path d="M 42.0 138.8 L 142.7 138.8 L 243.3 138.8 L 344.0 121.5 L 444.7 121.5 L 545.3 138.8 L 646.0 18.0" fill="none" stroke="#7fa8c9" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="138.8" r="2.8" fill="#7fa8c9"/><circle cx="142.7" cy="138.8" r="2.8" fill="#7fa8c9"/><circle cx="243.3" cy="138.8" r="2.8" fill="#7fa8c9"/><circle cx="344.0" cy="121.5" r="2.8" fill="#7fa8c9"/><circle cx="444.7" cy="121.5" r="2.8" fill="#7fa8c9"/><circle cx="545.3" cy="138.8" r="2.8" fill="#7fa8c9"/><circle cx="646.0" cy="18.0" r="2.8" fill="#7fa8c9"/>
-    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">9/28</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">2</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">4</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">6</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">8</text>
+    <path d="M 42.0 69.8 L 142.7 156.0 L 243.3 156.0 L 344.0 156.0 L 444.7 138.8 L 545.3 138.8 L 646.0 35.2" fill="none" stroke="#b4576f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="69.8" r="2.8" fill="#b4576f"/><circle cx="142.7" cy="156.0" r="2.8" fill="#b4576f"/><circle cx="243.3" cy="156.0" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#b4576f"/><circle cx="444.7" cy="138.8" r="2.8" fill="#b4576f"/><circle cx="545.3" cy="138.8" r="2.8" fill="#b4576f"/><circle cx="646.0" cy="35.2" r="2.8" fill="#b4576f"/><path d="M 42.0 138.8 L 142.7 138.8 L 243.3 138.8 L 344.0 121.5 L 444.7 121.5 L 545.3 138.8 L 646.0 18.0" fill="none" stroke="#4f7fa0" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="138.8" r="2.8" fill="#4f7fa0"/><circle cx="142.7" cy="138.8" r="2.8" fill="#4f7fa0"/><circle cx="243.3" cy="138.8" r="2.8" fill="#4f7fa0"/><circle cx="344.0" cy="121.5" r="2.8" fill="#4f7fa0"/><circle cx="444.7" cy="121.5" r="2.8" fill="#4f7fa0"/><circle cx="545.3" cy="138.8" r="2.8" fill="#4f7fa0"/><circle cx="646.0" cy="18.0" r="2.8" fill="#4f7fa0"/>
+    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">9/28</text>
   </svg>
-  <div class="legend"><span><i style="background:#c96a8a"></i>阿澈 发起</span><span><i style="background:#7fa8c9"></i>我 发起</span></div>
+  <div class="legend"><span><i style="background:#b4576f"></i>阿澈 发起</span><span><i style="background:#4f7fa0"></i>我 发起</span></div>
 </div>
 <div class="chart-card">
   <h4>情绪倾向走势</h4>
   <p class="tiny faint">基于本地情感词典的均分（-1 冷 ~ +1 暖）</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="情绪倾向走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">-1.0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">-0.5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">+0.0</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">+0.5</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">+1.0</text>
-    <path d="M 42.0 65.6 L 142.7 62.8 L 243.3 64.0 L 344.0 110.8 L 444.7 96.2 L 545.3 78.3 L 646.0 99.0" fill="none" stroke="#c96a8a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="65.6" r="2.8" fill="#c96a8a"/><circle cx="142.7" cy="62.8" r="2.8" fill="#c96a8a"/><circle cx="243.3" cy="64.0" r="2.8" fill="#c96a8a"/><circle cx="344.0" cy="110.8" r="2.8" fill="#c96a8a"/><circle cx="444.7" cy="96.2" r="2.8" fill="#c96a8a"/><circle cx="545.3" cy="78.3" r="2.8" fill="#c96a8a"/><circle cx="646.0" cy="99.0" r="2.8" fill="#c96a8a"/><path d="M 42.0 84.1 L 142.7 87.0 L 243.3 100.8 L 344.0 97.3 L 444.7 81.0 L 545.3 42.2 L 646.0 81.7" fill="none" stroke="#7fa8c9" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="84.1" r="2.8" fill="#7fa8c9"/><circle cx="142.7" cy="87.0" r="2.8" fill="#7fa8c9"/><circle cx="243.3" cy="100.8" r="2.8" fill="#7fa8c9"/><circle cx="344.0" cy="97.3" r="2.8" fill="#7fa8c9"/><circle cx="444.7" cy="81.0" r="2.8" fill="#7fa8c9"/><circle cx="545.3" cy="42.2" r="2.8" fill="#7fa8c9"/><circle cx="646.0" cy="81.7" r="2.8" fill="#7fa8c9"/>
-    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">9/28</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">-1.0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">-0.5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+0.0</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+0.5</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+1.0</text>
+    <path d="M 42.0 65.6 L 142.7 62.8 L 243.3 64.0 L 344.0 110.8 L 444.7 96.2 L 545.3 78.3 L 646.0 99.0" fill="none" stroke="#b4576f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="65.6" r="2.8" fill="#b4576f"/><circle cx="142.7" cy="62.8" r="2.8" fill="#b4576f"/><circle cx="243.3" cy="64.0" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="110.8" r="2.8" fill="#b4576f"/><circle cx="444.7" cy="96.2" r="2.8" fill="#b4576f"/><circle cx="545.3" cy="78.3" r="2.8" fill="#b4576f"/><circle cx="646.0" cy="99.0" r="2.8" fill="#b4576f"/><path d="M 42.0 84.1 L 142.7 87.0 L 243.3 100.8 L 344.0 97.3 L 444.7 81.0 L 545.3 42.2 L 646.0 81.7" fill="none" stroke="#4f7fa0" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="84.1" r="2.8" fill="#4f7fa0"/><circle cx="142.7" cy="87.0" r="2.8" fill="#4f7fa0"/><circle cx="243.3" cy="100.8" r="2.8" fill="#4f7fa0"/><circle cx="344.0" cy="97.3" r="2.8" fill="#4f7fa0"/><circle cx="444.7" cy="81.0" r="2.8" fill="#4f7fa0"/><circle cx="545.3" cy="42.2" r="2.8" fill="#4f7fa0"/><circle cx="646.0" cy="81.7" r="2.8" fill="#4f7fa0"/>
+    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">9/28</text>
   </svg>
-  <div class="legend"><span><i style="background:#c96a8a"></i>阿澈</span><span><i style="background:#7fa8c9"></i>我</span></div>
+  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
 </div>
 <div class="chart-card">
   <h4>回复速度走势</h4>
   <p class="tiny faint">每一段的中位回复间隔（分钟，越低越快）</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="回复速度走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">180</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">360</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece6e8" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">540</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece6e8" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#a9a2ae">720</text>
-    <path d="M 42.0 155.9 L 142.7 155.7 L 243.3 147.6 L 344.0 127.2 L 444.7 75.5 L 545.3 52.6 L 646.0 18.0" fill="none" stroke="#c96a8a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="155.9" r="2.8" fill="#c96a8a"/><circle cx="142.7" cy="155.7" r="2.8" fill="#c96a8a"/><circle cx="243.3" cy="147.6" r="2.8" fill="#c96a8a"/><circle cx="344.0" cy="127.2" r="2.8" fill="#c96a8a"/><circle cx="444.7" cy="75.5" r="2.8" fill="#c96a8a"/><circle cx="545.3" cy="52.6" r="2.8" fill="#c96a8a"/><circle cx="646.0" cy="18.0" r="2.8" fill="#c96a8a"/><path d="M 42.0 155.7 L 142.7 155.9 L 243.3 155.8 L 344.0 37.2 L 444.7 54.4 L 545.3 155.8 L 646.0 38.1" fill="none" stroke="#7fa8c9" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="155.7" r="2.8" fill="#7fa8c9"/><circle cx="142.7" cy="155.9" r="2.8" fill="#7fa8c9"/><circle cx="243.3" cy="155.8" r="2.8" fill="#7fa8c9"/><circle cx="344.0" cy="37.2" r="2.8" fill="#7fa8c9"/><circle cx="444.7" cy="54.4" r="2.8" fill="#7fa8c9"/><circle cx="545.3" cy="155.8" r="2.8" fill="#7fa8c9"/><circle cx="646.0" cy="38.1" r="2.8" fill="#7fa8c9"/>
-    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#a9a2ae">9/28</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">180</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">360</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">540</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">720</text>
+    <path d="M 42.0 155.9 L 142.7 155.7 L 243.3 147.6 L 344.0 127.2 L 444.7 75.5 L 545.3 52.6 L 646.0 18.0" fill="none" stroke="#b4576f" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="155.9" r="2.8" fill="#b4576f"/><circle cx="142.7" cy="155.7" r="2.8" fill="#b4576f"/><circle cx="243.3" cy="147.6" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="127.2" r="2.8" fill="#b4576f"/><circle cx="444.7" cy="75.5" r="2.8" fill="#b4576f"/><circle cx="545.3" cy="52.6" r="2.8" fill="#b4576f"/><circle cx="646.0" cy="18.0" r="2.8" fill="#b4576f"/><path d="M 42.0 155.7 L 142.7 155.9 L 243.3 155.8 L 344.0 37.2 L 444.7 54.4 L 545.3 155.8 L 646.0 38.1" fill="none" stroke="#4f7fa0" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="42.0" cy="155.7" r="2.8" fill="#4f7fa0"/><circle cx="142.7" cy="155.9" r="2.8" fill="#4f7fa0"/><circle cx="243.3" cy="155.8" r="2.8" fill="#4f7fa0"/><circle cx="344.0" cy="37.2" r="2.8" fill="#4f7fa0"/><circle cx="444.7" cy="54.4" r="2.8" fill="#4f7fa0"/><circle cx="545.3" cy="155.8" r="2.8" fill="#4f7fa0"/><circle cx="646.0" cy="38.1" r="2.8" fill="#4f7fa0"/>
+    <text x="42.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">4/1</text><text x="142.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/1</text><text x="243.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">5/31</text><text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">6/30</text><text x="444.7" y="172" text-anchor="middle" font-size="9" fill="#928c98">7/30</text><text x="545.3" y="172" text-anchor="middle" font-size="9" fill="#928c98">8/29</text><text x="646.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">9/28</text>
   </svg>
-  <div class="legend"><span><i style="background:#c96a8a"></i>阿澈</span><span><i style="background:#7fa8c9"></i>我</span></div>
+  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
 </div></div>
-  </section>
-
-  <section>
-    <h2>主要加分项与拖后腿项</h2>
-    <div class="wins"><div class="win"><h4>主要加分项</h4><ul><li><span>主动发起对话次数</span><span class="win-score" style="color:#7fb99a">77</span><span class="tiny faint">权重 20.4%</span></li><li><span>深夜及特定时段活跃度</span><span class="win-score" style="color:#7fb99a">100</span><span class="tiny faint">权重 5.6%</span></li><li><span>回复间隔与响应速度</span><span class="win-score" style="color:#7fb99a">59</span><span class="tiny faint">权重 22.2%</span></li></ul></div><div class="win"><h4>主要拖后腿</h4><ul><li><span>称呼与表情使用</span><span class="win-score" style="color:#e0a06a">10</span><span class="tiny faint">权重 9.3%</span></li><li><span>谁在结束对话</span><span class="win-score" style="color:#e0a06a">20</span><span class="tiny faint">权重 7.4%</span></li><li><span>情绪倾向随时间变化</span><span class="win-score" style="color:#e0a06a">48</span><span class="tiny faint">权重 9.3%</span></li></ul></div></div>
-  </section>
-
-  <section>
-    <h2>支撑结论的原话</h2>
-    <p class="tiny faint">
+</section>
+    
+<section class="section" id="evidence">
+  <div class="section-head">
+    <h2><span class="section-num">12</span>原话与证据</h2>
+    <p class="section-desc">加分项、拖后腿项与真实片段</p>
+  </div>
+  
+    <div class="wins"><div class="win"><h4>主要加分项</h4><ul><li><span>主动发起对话次数</span><span class="win-score" style="color:#4f8a6b">77</span><span class="tiny faint">权重 20.4%</span></li><li><span>深夜及特定时段活跃度</span><span class="win-score" style="color:#4f8a6b">100</span><span class="tiny faint">权重 5.6%</span></li><li><span>回复间隔与响应速度</span><span class="win-score" style="color:#4f8a6b">59</span><span class="tiny faint">权重 22.2%</span></li></ul></div><div class="win"><h4>主要拖后腿</h4><ul><li><span>称呼与表情使用</span><span class="win-score" style="color:#b5793a">10</span><span class="tiny faint">权重 9.3%</span></li><li><span>谁在结束对话</span><span class="win-score" style="color:#b5793a">20</span><span class="tiny faint">权重 7.4%</span></li><li><span>情绪倾向随时间变化</span><span class="win-score" style="color:#b5793a">48</span><span class="tiny faint">权重 9.3%</span></li></ul></div></div>
+    <p class="tiny faint" style="margin:20px 0 12px">
       下面每一句都来自你导入的文件，没有改写、没有生成。自己复核一遍，比相信分数更重要。
     </p>
     <ul class="ev-list">
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">04-02 08:23</span>
       </div>
       <blockquote>嗯 想你</blockquote>
@@ -862,7 +1147,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">10-09 20:00</span>
       </div>
       <blockquote>没什么</blockquote>
@@ -870,7 +1155,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">04-02 08:12</span>
       </div>
       <blockquote>早安宝宝</blockquote>
@@ -878,7 +1163,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">04-03 23:45</span>
       </div>
       <blockquote>好 晚安宝贝</blockquote>
@@ -886,7 +1171,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">04-01 21:35</span>
       </div>
       <blockquote>好 早点休息</blockquote>
@@ -894,7 +1179,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#7fa8c9">我</span>
+        <span class="ev-who" style="color:#4f7fa0">我</span>
         <span class="ev-when">07-16 09:00</span>
       </div>
       <blockquote>那你忙吧</blockquote>
@@ -902,7 +1187,7 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#7fa8c9">我</span>
+        <span class="ev-who" style="color:#4f7fa0">我</span>
         <span class="ev-when">08-21 08:00</span>
       </div>
       <blockquote>你是不是不想见我了</blockquote>
@@ -910,22 +1195,26 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
     </li>
     <li class="ev">
       <div class="ev-head">
-        <span class="ev-who" style="color:#c96a8a">阿澈</span>
+        <span class="ev-who" style="color:#b4576f">阿澈</span>
         <span class="ev-when">04-01 21:33</span>
       </div>
       <blockquote>到家了跟我说一声</blockquote>
       <span class="ev-reason">TA 主动开启的一轮对话</span>
     </li></ul>
-  </section>
-
-  <section>
-    <h2>分数是怎么算出来的</h2>
+</section>
+    
+<section class="section" id="score">
+  <div class="section-head">
+    <h2><span class="section-num">13</span>分数是怎么算出来的</h2>
+    <p class="section-desc">完整权重与贡献分账</p>
+  </div>
+  
     <details class="conf" open>
       <summary>展开 / 收起明细</summary>
       <p class="tiny faint">
         <b>总分由两个视角综合而成</b>：八维模型（覆盖面广）与五个量化指标
         （聚焦 TA 的行为信号）。两者先各自算成 0–100，再按权重综合：
-        八维模型 57.0 × 60% + 量化指标 70.7 × 40% = 62.5
+        <b>八维模型 57.0 × 60% + 量化指标 70.7 × 40% = 62.5</b>
       </p>
       <p class="tiny faint">
         每个维度先算出若干子指标，各自映射到 0–100 后加权得到维度分，维度分再加权得到总分。
@@ -958,9 +1247,22 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
       
     </div></div>
     </details>
-  </section>
+</section>
 
+    
+<section class="section" id="notes">
+  <div class="section-head">
+    <h2><span class="section-num">14</span>说明与免责</h2>
+    <p class="section-desc">数据问题、来源与免责声明</p>
+  </div>
   
+    <p class="tiny faint">
+      解析自：samples\sample_wechat_cooling.txt
+    </p>
+    <ul class="caveats"><li>量化指标「深夜发消息次数」样本不足，已从综合情感倾向中剔除。</li></ul>
+</section>
+
+    
 <section class="comfort">
   <div class="comfort-inner">
     <p class="kicker">写在这里的话</p>
@@ -969,25 +1271,64 @@ svg.hourbars, svg.monthbars { width: 100%; height: auto; display: block; }
   </div>
 </section>
 
-  <section>
-    <h2>数据说明与免责</h2>
-    <p class="tiny faint">
-      解析自：samples\sample_wechat_cooling.txt
-    </p>
-    <ul class="caveats"><li>量化指标「深夜发消息次数」样本不足，已从综合情感倾向中剔除。</li></ul>
-  </section>
+    <footer>
+      <p><b>数据只在本地处理。</b>这份报告由 loves-me-not 在你的设备上离线生成，
+      全程没有任何网络请求；你的聊天记录没有被上传到任何地方。</p>
+      <p><b>结果仅供参考，不构成对真实关系的判断。</b>
+      本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。</p>
+      <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
+      手机没电，或者他本来就不太会说话。</p>
+      
+      <p>生成时间：2026-10-06 16:25 · loves-me-not v0.1.0</p>
+    </footer>
 
-  <footer>
-    <p><b>数据只在本地处理。</b>这份报告由 loves-me-not 在你的设备上离线生成，
-    全程没有任何网络请求；你的聊天记录没有被上传到任何地方。</p>
-    <p><b>结果仅供参考，不构成对真实关系的判断。</b>
-    本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。</p>
-    <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
-    手机没电，或者他本来就不太会说话。</p>
-    <p></p>
-    <p>生成时间：2026-10-06 16:02 · loves-me-not v0.1.0</p>
-  </footer>
-
+  </main>
 </div>
+
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var sections = Object.keys(byId).map(function (id) { return document.getElementById(id); })
+                       .filter(Boolean);
+  if (!sections.length) return;
+
+  var visible = {};
+  function refresh() {
+    var best = null, bestTop = Infinity;
+    sections.forEach(function (s) {
+      if (!visible[s.id]) return;
+      var top = Math.abs(s.getBoundingClientRect().top);
+      if (top < bestTop) { bestTop = top; best = s.id; }
+    });
+    // 没有任何区块进入视野时，退化为「最后一个已滚过的区块」
+    if (!best) {
+      var y = window.scrollY + 120;
+      sections.forEach(function (s) { if (s.offsetTop <= y) best = s.id; });
+    }
+    if (!best) return;
+    links.forEach(function (a) {
+      a.classList.toggle('is-active', a === byId[best]);
+    });
+    var active = byId[best];
+    if (active && active.scrollIntoView && window.innerWidth < 940) {
+      active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+    refresh();
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+
+  sections.forEach(function (s) { io.observe(s); });
+  window.addEventListener('scroll', refresh, { passive: true });
+  window.addEventListener('resize', refresh);
+  refresh();
+})();
+</script>
+
 </body>
 </html>

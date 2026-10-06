@@ -102,93 +102,82 @@ def _apply_redaction(analysis: Analysis, result: ScoreResult) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 调色板：柔和、低饱和，投影和手机上都不刺眼
+# 调色板：直接复用 :mod:`loves_me_not.visuals` 的定义，保证图表与页面同色
 # --------------------------------------------------------------------------- #
 
-PALETTE = {
-    "bg": "#fbf8f6",
-    "card": "#ffffff",
-    "ink": "#3d3a3f",
-    "ink_soft": "#7b7480",
-    "ink_faint": "#a9a2ae",
-    "line": "#ece6e8",
-    "peer": "#c96a8a",     # 薰衣草玫瑰——代表 TA
-    "me": "#7fa8c9",       # 雾蓝——代表我
-    "accent": "#d9a441",   # 暖金——强调
-    "good": "#7fb99a",
-    "warn": "#e0a06a",
+PALETTE = V.PALETTE
+
+
+# --------------------------------------------------------------------------- #
+# SVG：总分仪表盘
+# --------------------------------------------------------------------------- #
+
+#: 环形仪表盘的几何参数（唯一来源，避免各处硬编码不一致）
+_RING = {
+    "size": 260.0,
+    "stroke": 18.0,
+    "gap": 26.0,        # 半径留白，保证描边不越界
 }
 
 
-# --------------------------------------------------------------------------- #
-# SVG：仪表盘
-# --------------------------------------------------------------------------- #
-
-_GAUGE_ANGLE = 250.0        # 弧线总张角（度）
-_GAUGE_START = 145.0        # 起始角度（从 12 点顺时针计）
-
-
 def _polar(cx: float, cy: float, r: float, angle_deg: float) -> tuple[float, float]:
-    """角度以「12 点方向为 0，顺时针为正」计。"""
+    """极坐标转直角坐标；角度以「12 点方向为 0、顺时针为正」计。"""
     rad = math.radians(angle_deg - 90.0)
     return cx + r * math.cos(rad), cy + r * math.sin(rad)
 
 
-def _arc_path(cx: float, cy: float, r: float, a0: float, a1: float) -> str:
-    """画圆弧。
-
-    角度按「12 点方向为 0、顺时针为正」定义，而 SVG 的 y 轴向下，
-    所以「屏幕上顺时针」对应 ``sweep-flag = 0``。这里固定用 0，
-    否则弧线会朝反方向画，和指针指向对不上。
-    """
-    if a1 < a0:
-        a0, a1 = a1, a0
-    x0, y0 = _polar(cx, cy, r, a0)
-    x1, y1 = _polar(cx, cy, r, a1)
-    large = 1 if abs(a1 - a0) > 180 else 0
-    return f"M {x0:.2f} {y0:.2f} A {r:.2f} {r:.2f} 0 {large} 0 {x1:.2f} {y1:.2f}"
-
-
 def render_gauge(score: int, tier_color: str, label: str) -> str:
-    """总分仪表盘。"""
-    cx, cy, r = 160.0, 150.0, 108.0
+    """总分仪表盘：**环形进度条**（用 ``stroke-dasharray`` 画），不是弧线。
+
+    为什么换掉原来的弧线方案
+    ------------------------
+    旧实现用 ``path A`` 画一段 250° 的弧，还配了一根指针和一圈刻度。
+    它有三个先天缺陷：
+
+    1. 弧线端点、指针角度、刻度位置由**三套独立的三角度量**算出，
+       任何一处口径不一致（例如 sweep-flag 取反）就会立刻「乱」；
+    2. 刻度与数字标签被推到半径 +28 的位置，而 ``viewBox`` 没有留够余量，
+       窄屏缩放后标签会溢出或互相压住；
+    3. 250° 的弧本身不对称，在窄栏里看起来就是歪的。
+
+    环形进度条是纯几何：一个整圆 + ``dasharray`` 控制走多少。
+    没有端点计算、没有指针、没有溢出——缩放后永远不变形。
+    ``rotate(-90)`` 让进度从 12 点方向开始。
+    """
+    size = _RING["size"]
+    stroke = _RING["stroke"]
+    r = size / 2 - _RING["gap"]
+    c = 2 * math.pi * r
     frac = max(0.0, min(1.0, score / 100.0))
-    end_angle = _GAUGE_START + _GAUGE_ANGLE * frac
+    filled = c * frac
 
-    ticks = []
-    for v in range(0, 101, 10):
-        a = _GAUGE_START + _GAUGE_ANGLE * (v / 100.0)
-        x0, y0 = _polar(cx, cy, r + 8, a)
-        x1, y1 = _polar(cx, cy, r + (16 if v % 20 == 0 else 12), a)
-        ticks.append(
-            f'<line x1="{x0:.1f}" y1="{y0:.1f}" x2="{x1:.1f}" y2="{y1:.1f}" '
-            f'stroke="{PALETTE["ink_faint"]}" stroke-width="1.5" stroke-linecap="round"/>'
-        )
-        if v % 20 == 0:
-            tx, ty = _polar(cx, cy, r + 28, a)
-            ticks.append(
-                f'<text x="{tx:.1f}" y="{ty:.1f}" fill="{PALETTE["ink_faint"]}" '
-                f'font-size="10" text-anchor="middle" dominant-baseline="middle">{v}</text>'
-            )
-
-    nx, ny = _polar(cx, cy, r - 26, end_angle)
     return f"""
-<svg viewBox="0 0 320 250" class="gauge" role="img" aria-label="情感投入指数 {score} 分">
-  <path d="{_arc_path(cx, cy, r, _GAUGE_START, _GAUGE_START + _GAUGE_ANGLE)}"
-        fill="none" stroke="{PALETTE['line']}" stroke-width="18" stroke-linecap="round"/>
-  <path d="{_arc_path(cx, cy, r, _GAUGE_START, end_angle)}"
-        fill="none" stroke="{tier_color}" stroke-width="18" stroke-linecap="round"/>
-  {''.join(ticks)}
-  <line x1="{cx}" y1="{cy}" x2="{nx:.1f}" y2="{ny:.1f}"
-        stroke="{PALETTE['ink']}" stroke-width="3.5" stroke-linecap="round"/>
-  <circle cx="{cx}" cy="{cy}" r="7" fill="{PALETTE['ink']}"/>
-  <text x="{cx}" y="{cy - 34}" text-anchor="middle" fill="{PALETTE['ink']}"
-        font-size="52" font-weight="700">{score}</text>
-  <text x="{cx}" y="{cy - 8}" text-anchor="middle" fill="{PALETTE['ink_soft']}"
-        font-size="13">/ 100</text>
-  <text x="{cx}" y="{cy + 44}" text-anchor="middle" fill="{tier_color}"
-        font-size="16" font-weight="600">{esc(label)}</text>
-</svg>"""
+<svg viewBox="0 0 {size:.0f} {size:.0f}" class="gauge" role="img"
+     aria-label="情感投入指数 {score} 分，满分 100 分">
+  <defs>
+    <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="{tier_color}" stop-opacity="0.78"/>
+      <stop offset="100%" stop-color="{tier_color}"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 底环 -->
+  <circle cx="{size / 2}" cy="{size / 2}" r="{r:.1f}" fill="none"
+          stroke="{PALETTE['line']}" stroke-width="{stroke}"/>
+  <!-- 进度环：从 12 点方向顺时针 -->
+  <circle cx="{size / 2}" cy="{size / 2}" r="{r:.1f}" fill="none"
+          stroke="url(#gaugeGrad)" stroke-width="{stroke}" stroke-linecap="round"
+          stroke-dasharray="{filled:.2f} {c - filled:.2f}"
+          transform="rotate(-90 {size / 2} {size / 2})"/>
+
+  <text x="{size / 2}" y="{size / 2 - 2}" text-anchor="middle"
+        dominant-baseline="middle" class="gauge-num"
+        fill="{PALETTE['ink']}">{score}</text>
+  <text x="{size / 2}" y="{size / 2 + 40}" text-anchor="middle"
+        dominant-baseline="middle" class="gauge-denom"
+        fill="{PALETTE['ink_faint']}">/ 100</text>
+</svg>
+<p class="gauge-label" style="color:{tier_color}">{esc(label)}</p>"""
 
 
 def render_dual_bars(result: ScoreResult, analysis: Analysis) -> str:
@@ -916,260 +905,483 @@ def render_timeline(analysis: Analysis) -> str:
 # --------------------------------------------------------------------------- #
 
 def _css() -> str:
+    """整页样式。
+
+    配色见 :data:`PALETTE`；样式集中在这里，方便整体调色。
+    """
     p = PALETTE
-    return f"""
-:root {{
-  --bg: {p['bg']}; --card: {p['card']};
-  --ink: {p['ink']}; --ink-soft: {p['ink_soft']}; --ink-faint: {p['ink_faint']};
-  --line: {p['line']}; --peer: {p['peer']}; --me: {p['me']}; --accent: {p['accent']};
+    return f""":root {{
+  --bg: {p['bg']};
+  --surface: {p['surface']};
+  --surface-alt: {p['surface_alt']};
+  --ink: {p['ink']};
+  --ink-soft: {p['ink_soft']};
+  --ink-faint: {p['ink_faint']};
+  --line: {p['line']};
+  --line-soft: {p['line_soft']};
+  --peer: {p['peer']};
+  --peer-soft: {p['peer_soft']};
+  --me: {p['me']};
+  --me-soft: {p['me_soft']};
+  --accent: {p['accent']};
+  --accent-soft: {p['accent_soft']};
+  --good: {p['good']};
+  --warn: {p['warn']};
+  --nav-bg: {p['nav_bg']};
+  --nav-ink: {p['nav_ink']};
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(42, 39, 49, .04), 0 8px 24px -12px rgba(42, 39, 49, .14);
+  --shadow-nav: 0 10px 30px -12px rgba(34, 31, 40, .5);
+  --nav-w: 232px;
+  --fs-base: 15px;
 }}
+
 * {{ box-sizing: border-box; }}
-html {{ -webkit-text-size-adjust: 100%; }}
+html {{ -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }}
+@media (prefers-reduced-motion: reduce) {{
+  html {{ scroll-behavior: auto; }}
+  * {{ transition: none !important; animation: none !important; }}
+}}
 body {{
-  margin: 0; background: var(--bg); color: var(--ink);
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
                "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  font-size: 15px; line-height: 1.72;
+  font-size: var(--fs-base);
+  line-height: 1.72;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }}
-.wrap {{ max-width: 760px; margin: 0 auto; padding: 18px 16px 56px; }}
-h1, h2, h3, h4 {{ line-height: 1.35; margin: 0 0 .5em; font-weight: 650; }}
-h2 {{ font-size: 1.28rem; }}
-h3 {{ font-size: 1.02rem; }}
-h4 {{ font-size: .92rem; }}
-p {{ margin: 0 0 .8em; }}
-.tiny {{ font-size: .78rem; }}
+h1, h2, h3, h4 {{ line-height: 1.32; margin: 0 0 .6em; font-weight: 650; letter-spacing: -.01em; }}
+p {{ margin: 0 0 .85em; }}
+img, svg {{ max-width: 100%; }}
+.tiny {{ font-size: .775rem; line-height: 1.65; }}
 .faint {{ color: var(--ink-faint); }}
 .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 .kicker {{
-  font-size: .72rem; letter-spacing: .16em; text-transform: uppercase;
-  color: var(--ink-faint); margin: 0 0 .35em;
+  font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 .4em; font-weight: 600;
 }}
-section {{ margin: 0 0 26px; }}
+
+/* ===================== 双栏骨架 ===================== */
+.layout {{ display: block; }}
+
+.nav {{
+  position: sticky; top: 0; z-index: 60;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--line);
+}}
+.nav-brand {{
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 16px 8px;
+}}
+.brand-mark {{
+  width: 26px; height: 26px; border-radius: 8px; flex: none;
+  background: linear-gradient(135deg, var(--peer), var(--accent));
+  display: grid; place-items: center;
+  color: #fff; font-size: 13px; font-weight: 700;
+}}
+.brand-text {{ display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }}
+.brand-title {{ font-size: .88rem; font-weight: 660; }}
+.brand-sub {{ font-size: .68rem; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+
+.nav-list {{
+  display: flex; gap: 4px; list-style: none; margin: 0;
+  padding: 0 12px 9px; overflow-x: auto; scrollbar-width: none;
+}}
+.nav-list::-webkit-scrollbar {{ display: none; }}
+/* 侧栏脚注只在桌面端出现；移动端隐藏，否则会夹在标签栏与正文之间 */
+.nav-foot {{ display: none; }}
+.nav-link {{
+  display: block; white-space: nowrap; text-decoration: none;
+  color: var(--ink-soft); font-size: .8rem; font-weight: 550;
+  padding: 6px 11px; border-radius: 99px; border: 1px solid transparent;
+  transition: background .18s, color .18s, border-color .18s;
+}}
+.nav-link:hover {{ background: var(--surface); color: var(--ink); }}
+.nav-link .nav-ico {{ margin-right: 4px; opacity: .85; }}
+.nav-link.is-active {{
+  background: var(--ink); color: #fff; border-color: var(--ink);
+}}
+.nav-link.is-active .nav-ico {{ opacity: 1; }}
+
+.main {{ padding: 20px 16px 60px; max-width: 100%; }}
+
+/* ===================== 区块 ===================== */
+.section {{ margin: 0 0 40px; scroll-margin-top: 84px; }}
+.section-head {{ margin: 0 0 14px; }}
+.section-head h2 {{
+  font-size: 1.22rem; margin: 0 0 .2em;
+  display: flex; align-items: center; gap: 9px;
+}}
+.section-num {{
+  font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 2px 7px; border-radius: 6px; flex: none;
+}}
+.section-desc {{ color: var(--ink-soft); font-size: .84rem; margin: 0; max-width: 68ch; }}
+
 .card {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-  padding: 18px 16px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow);
 }}
+.card + .card {{ margin-top: 12px; }}
+.card-flat {{ box-shadow: none; }}
+
+/* ===================== 结论首屏 ===================== */
 .banner {{
-  display: flex; flex-direction: column; gap: 6px;
-  background: #fdf6e9; border: 1px solid #f0dcb8; border-radius: 14px;
-  padding: 12px 14px; margin-bottom: 16px; font-size: .86rem; color: #8a6a2f;
+  display: flex; gap: 10px; border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 14px; font-size: .84rem;
+  line-height: 1.62; border: 1px solid transparent;
 }}
-.banner strong {{ font-size: .95rem; }}
-.verdict .verdict-grid {{ display: block; }}
-.gauge-wrap {{ max-width: 340px; margin: 0 auto; }}
+.banner-ico {{ flex: none; font-size: 1rem; line-height: 1.4; }}
+.banner strong {{ display: block; margin-bottom: 2px; font-size: .9rem; }}
+.banner-insufficient {{ background: #fdf7ec; border-color: #efdcbb; color: #8a6524; }}
+.banner-assumed {{ background: #fdf1f4; border-color: #eecbd6; color: #8d4f62; }}
+
+.verdict-grid {{ display: block; }}
+.gauge-wrap {{ max-width: 300px; margin: 0 auto 6px; }}
 svg.gauge {{ width: 100%; height: auto; display: block; }}
-.verdict-text h1 {{ font-size: 1.7rem; margin: .1em 0 .2em; }}
-.one-liner {{ color: var(--ink-soft); margin: 0 0 .6em; }}
-.advice {{
-  background: var(--card); border: 1px solid var(--line); border-left-width: 4px;
-  border-radius: 12px; padding: 12px 14px; margin: 14px 0 0;
+.gauge-num {{ font-size: 74px; font-weight: 700; letter-spacing: -.03em; }}
+.gauge-denom {{ font-size: 15px; font-weight: 500; }}
+.gauge-label {{
+  text-align: center; font-size: 1.06rem; font-weight: 650; margin: 2px 0 0;
 }}
-.advice p {{ margin: 0; color: var(--ink-soft); font-size: .9rem; }}
-.disclaimer-top {{
-  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
-  background: #f4f1f5; color: var(--ink-soft); font-size: .76rem;
+
+.verdict-text h1 {{ font-size: 1.62rem; margin: .05em 0 .24em; }}
+.one-liner {{ color: var(--ink-soft); margin: 0 0 .7em; font-size: 1rem; }}
+.verdict-meta {{ font-size: .775rem; color: var(--ink-faint); line-height: 1.7; }}
+.verdict-blend {{
+  margin-top: 10px; padding: 9px 12px; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  font-size: .775rem; color: var(--ink-soft); line-height: 1.68;
 }}
-details.conf {{ margin: .6em 0 0; }}
+.verdict-blend b {{ color: var(--ink); font-variant-numeric: tabular-nums; }}
+
+details.conf {{ margin: .7em 0 0; }}
 details.conf summary {{
-  cursor: pointer; font-size: .82rem; color: var(--ink-soft);
-  padding: 4px 0; list-style: none;
+  cursor: pointer; font-size: .8rem; color: var(--ink-soft);
+  padding: 5px 0; list-style: none; font-weight: 550;
 }}
 details.conf summary::-webkit-details-marker {{ display: none; }}
-details.conf summary::before {{ content: "▸ "; color: var(--ink-faint); }}
+details.conf summary::before {{ content: "▸ "; color: var(--ink-faint); font-size: .7rem; }}
 details.conf[open] summary::before {{ content: "▾ "; }}
-details.conf ul {{ margin: 6px 0; padding-left: 20px; font-size: .82rem; color: var(--ink-soft); }}
-.bars {{ margin-top: 6px; }}
-.bar-row {{ margin-bottom: 12px; }}
-.bar-head {{ display: flex; justify-content: space-between; font-size: .85rem; margin-bottom: 5px; }}
-.bar-head .who {{ font-weight: 600; }}
-.bar-val {{ font-variant-numeric: tabular-nums; font-weight: 650; }}
-.bar-track {{ height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }}
-.bar-fill {{ height: 100%; border-radius: 99px; }}
-.stats {{
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+details.conf ul {{ margin: 6px 0 8px; padding-left: 20px; font-size: .8rem; color: var(--ink-soft); }}
+details.conf li {{ margin-bottom: .2em; }}
+
+.advice {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-left-width: 3px; border-radius: var(--radius-sm);
+  padding: 12px 15px; margin: 16px 0 0; box-shadow: var(--shadow);
 }}
-.stat {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 12px 13px; display: flex; flex-direction: column; gap: 2px;
-}}
-.stat-title {{ font-size: .74rem; color: var(--ink-faint); }}
-.stat-value {{ font-size: 1.18rem; font-weight: 680; font-variant-numeric: tabular-nums; }}
-.stat-sub {{ font-size: .72rem; color: var(--ink-faint); }}
-.dim-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
-.dim-card {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 15px 14px;
-}}
-.dim-card.dim-na {{ background: #fafafa; border-style: dashed; }}
-.dim-summary {{ font-size: .88rem; color: var(--ink-soft); margin: 0 0 .7em; }}
-.mini-bars {{ margin: 0 0 .7em; }}
-.mini {{ display: grid; grid-template-columns: 68px 1fr 34px; align-items: center; gap: 8px;
-        font-size: .76rem; margin-bottom: 5px; }}
-.mini span {{ color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
-.mini em {{ font-style: normal; text-align: right; font-variant-numeric: tabular-nums; font-weight: 640; }}
-.mini-track {{ height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; }}
-.mini-fill {{ height: 100%; border-radius: 99px; }}
-.chips {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 6px; }}
-.chip {{
-  background: #f7f4f6; border-radius: 9px; padding: 7px 9px;
-  display: flex; flex-direction: column; gap: 1px;
-}}
-.chip-na {{ background: #f2f2f4; opacity: .72; }}
-.chip-label {{ font-size: .7rem; color: var(--ink-faint); line-height: 1.4; }}
-.chip-val {{ font-size: .86rem; font-weight: 620; font-variant-numeric: tabular-nums; }}
-.chip-note {{ font-size: .66rem; color: var(--ink-faint); line-height: 1.35; }}
-.radar {{ width: 100%; max-width: 460px; height: auto; display: block; margin: 0 auto; }}
-.legend {{
-  display: flex; flex-wrap: wrap; gap: 10px; font-size: .74rem;
-  color: var(--ink-soft); margin-top: 6px;
-}}
-.legend span {{ display: inline-flex; align-items: center; gap: 5px; }}
-.legend i {{ width: 10px; height: 10px; border-radius: 3px; display: inline-block; }}
-.chart-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
-.chart-card {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
-}}
-.chart-card h4 {{ margin: 0 0 .1em; }}
-svg.linechart {{ width: 100%; height: auto; display: block; margin: 6px 0 2px; }}
-.ev-list {{ list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }}
-.ev {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px;
-}}
-.ev-head {{ display: flex; justify-content: space-between; font-size: .78rem; margin-bottom: 6px; }}
-.ev-who {{ font-weight: 650; }}
-.ev-when {{ color: var(--ink-faint); font-variant-numeric: tabular-nums; }}
-.ev blockquote {{
-  margin: 0 0 6px; padding: 8px 11px; background: #f8f5f7; border-radius: 9px;
-  font-size: .88rem; white-space: pre-wrap; word-break: break-word;
-}}
-.ev-reason {{ font-size: .72rem; color: var(--ink-faint); }}
-.wins {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
-.win {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
-.win ul {{ list-style: none; margin: 0; padding: 0; }}
-.win li {{
-  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline;
-  padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: .84rem;
-}}
-.win li:last-child {{ border-bottom: none; }}
-.win-score {{ font-weight: 680; font-variant-numeric: tabular-nums; }}
-.bds {{ display: grid; gap: 12px; }}
-.bd {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
-.bd h4 {{ display: flex; justify-content: space-between; align-items: baseline; }}
-.bd-total {{ font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 600; }}
-.bd table {{ width: 100%; border-collapse: collapse; font-size: .8rem; }}
-.bd th, .bd td {{ padding: 5px 4px; border-bottom: 1px solid var(--line); }}
-.bd th {{ color: var(--ink-faint); font-weight: 500; text-align: left; font-size: .72rem; }}
-.bd th.num, .bd td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
-.caveats {{ margin: 0; padding-left: 20px; font-size: .84rem; color: var(--ink-soft); }}
-.caveats li {{ margin-bottom: .35em; }}
-.comfort {{
-  background: linear-gradient(170deg, #fdf7f4 0%, #f6f2f7 100%);
-  border: 1px solid var(--line); border-radius: 18px; padding: 22px 18px;
-}}
-.comfort-inner {{ max-width: 62ch; margin: 0 auto; }}
-.comfort h2 {{ font-size: 1.2rem; color: #6f6273; }}
-.comfort p {{ color: #5f5766; font-size: .92rem; }}
-footer {{
-  margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
-  font-size: .74rem; color: var(--ink-faint);
-}}
-footer p {{ margin: 0 0 .5em; }}
-@media (min-width: 620px) {{
-  body {{ font-size: 15.5px; }}
-  .wrap {{ padding: 26px 22px 72px; }}
-  .verdict .verdict-grid {{ display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: center; }}
-  .gauge-wrap {{ max-width: none; }}
-  .verdict-text h1 {{ font-size: 2rem; }}
-  .dim-grid {{ grid-template-columns: 1fr 1fr; }}
-  .chart-grid {{ grid-template-columns: 1fr 1fr; }}
-  .wins {{ grid-template-columns: 1fr 1fr; }}
-  .bds {{ grid-template-columns: 1fr; }}
-  .stats-wide {{ grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }}
-  .persona-grid {{ grid-template-columns: 1fr 1fr; }}
-}}
-@media print {{
-  body {{ background: #fff; }}
-  .card, .dim-card, .chart-card, .ev, .stat {{ break-inside: avoid; }}
+.advice p {{ margin: 0; color: var(--ink-soft); font-size: .875rem; }}
+.disclaimer-top {{
+  margin-top: 14px; padding: 11px 13px; border-radius: var(--radius-sm);
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  color: var(--ink-faint); font-size: .745rem; line-height: 1.66;
 }}
 
-/* ---------- 量化指标 ---------- */
-.quant-head {{
-  display: flex; flex-direction: column; gap: 4px;
-  background: var(--card); border: 1px solid var(--line); border-left-width: 4px;
-  border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;
+/* ===================== 统计卡 ===================== */
+.stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px; }}
+.stat {{
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 12px 13px; display: flex; flex-direction: column; gap: 1px;
+  box-shadow: var(--shadow);
 }}
-.quant-head strong {{ font-size: 1.05rem; }}
-.quant-head span {{ font-size: .84rem; color: var(--ink-soft); }}
-.quant-na {{ background: #fdf6e9; border-color: #f0dcb8; }}
+.stat-title {{ font-size: .715rem; color: var(--ink-faint); letter-spacing: .01em; }}
+.stat-value {{
+  font-size: 1.16rem; font-weight: 680; font-variant-numeric: tabular-nums;
+  letter-spacing: -.015em; line-height: 1.35;
+}}
+.stat-sub {{ font-size: .705rem; color: var(--ink-faint); line-height: 1.5; }}
+
+/* ===================== 进度条 ===================== */
+.bars {{ margin-top: 4px; }}
+.bar-row {{ margin-bottom: 14px; }}
+.bar-row:last-child {{ margin-bottom: 4px; }}
+.bar-head {{ display: flex; justify-content: space-between; align-items: baseline; font-size: .85rem; margin-bottom: 6px; }}
+.bar-head .who {{ font-weight: 620; }}
+.bar-val {{ font-variant-numeric: tabular-nums; font-weight: 680; font-size: 1.05rem; }}
+.bar-track {{ height: 9px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }}
+.bar-fill {{ height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.2, .7, .3, 1); }}
+
+/* ===================== 量化指标 ===================== */
+.quant-head {{
+  display: flex; flex-direction: column; gap: 3px;
+  background: var(--surface); border: 1px solid var(--line); border-left-width: 3px;
+  border-radius: var(--radius-sm); padding: 13px 15px; margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}}
+.quant-head strong {{ font-size: 1.02rem; letter-spacing: -.01em; }}
+.quant-head span {{ font-size: .83rem; color: var(--ink-soft); line-height: 1.65; }}
+.quant-na {{ background: #fdf7ec; border-color: #efdcbb; }}
 .quant-list {{ display: grid; gap: 10px; }}
 .q-item {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 12px 13px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 13px 14px; box-shadow: var(--shadow);
 }}
-.q-line {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 6px; }}
-.q-label {{ font-weight: 620; font-size: .92rem; }}
-.q-value {{ font-variant-numeric: tabular-nums; font-weight: 600; color: var(--peer); }}
-.q-weight {{ font-size: .7rem; color: var(--ink-faint); margin-left: auto; }}
-.q-skip {{ color: var(--warn); }}
-.q-bar {{ height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 7px; }}
+.q-line {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 7px; }}
+.q-label {{ font-weight: 620; font-size: .9rem; }}
+.q-value {{ font-variant-numeric: tabular-nums; font-weight: 650; color: var(--peer); font-size: .9rem; }}
+.q-weight {{
+  font-size: .68rem; color: var(--ink-faint); margin-left: auto;
+  background: var(--surface-alt); border-radius: 99px; padding: 2px 9px;
+}}
+.q-skip {{ color: var(--warn); background: #fdf7ec; }}
+.q-bar {{ height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }}
 .q-bar > div {{ height: 100%; border-radius: 99px; }}
-.q-formula {{ line-height: 1.6; margin: 0; }}
+.q-formula {{ line-height: 1.68; margin: 0; color: var(--ink-faint); }}
+.q-formula b {{ color: var(--ink-soft); font-weight: 600; }}
 .quant-legend {{
-  margin-top: 12px; padding: 10px 12px; background: #f7f4f6; border-radius: 10px;
-  line-height: 1.6;
+  margin-top: 12px; padding: 11px 13px; background: var(--surface-alt);
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm); line-height: 1.7;
 }}
 
-/* ---------- 热力图 ---------- */
-.heat-wrap {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
-.heat-scroll {{ overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }}
+/* ===================== 图表栅格 ===================== */
+.chart-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.chart-card {{
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 15px; box-shadow: var(--shadow);
+}}
+.chart-card h4 {{ margin: 0 0 .15em; font-size: .95rem; }}
+svg.linechart, svg.hourbars, svg.monthbars {{ width: 100%; height: auto; display: block; margin: 8px 0 2px; }}
+
+.legend {{
+  display: flex; flex-wrap: wrap; gap: 12px; font-size: .73rem;
+  color: var(--ink-soft); margin-top: 7px;
+}}
+.legend span {{ display: inline-flex; align-items: center; gap: 5px; }}
+.legend i {{ width: 9px; height: 9px; border-radius: 3px; display: inline-block; flex: none; }}
+
+/* ===================== 热力图 ===================== */
+.heat-wrap {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}}
+.heat-scroll {{ overflow-x: auto; padding-bottom: 7px; -webkit-overflow-scrolling: touch; }}
 svg.heatmap {{ display: block; }}
 svg.heatmap rect {{ transition: opacity .15s; }}
-svg.heatmap rect:hover {{ opacity: .72; }}
-.heat-legend {{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }}
-svg.heat-scale {{ display: block; }}
-.heat-facts {{ display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--ink-soft); }}
-.heat-note {{ margin: 8px 0 0; line-height: 1.6; }}
+svg.heatmap rect:hover {{ opacity: .68; }}
+.heat-legend {{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 11px; }}
+svg.heat-scale {{ display: block; border-radius: 3px; }}
+.heat-facts {{ display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 9px; color: var(--ink-soft); }}
+.heat-note {{ margin: 9px 0 0; line-height: 1.7; }}
 
-/* ---------- 词云 ---------- */
-.cloud-wrap {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
+/* ===================== 词云 ===================== */
+.cloud-wrap {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}}
 svg.wordcloud {{ width: 100%; height: auto; display: block; }}
 svg.wordcloud text {{ font-family: inherit; }}
 
-/* ---------- 人物画像 ---------- */
-.persona-wrap {{ display: block; }}
+/* ===================== 人物画像 ===================== */
 .persona-note {{
-  background: #f7f4f6; border-radius: 10px; padding: 10px 12px;
-  line-height: 1.6; margin-bottom: 12px;
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); padding: 11px 13px; line-height: 1.7; margin-bottom: 12px;
 }}
 .persona-grid {{ display: grid; grid-template-columns: 1fr; gap: 10px; }}
 .persona-card {{
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow);
 }}
-.persona-head {{ display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }}
-.persona-label {{ font-weight: 660; font-size: 1rem; }}
-.persona-tone {{ border-radius: 99px; padding: 2px 9px; white-space: nowrap; }}
-.persona-text {{ font-size: .87rem; color: var(--ink-soft); margin: 0 0 8px; }}
-.persona-bar {{ height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 5px; }}
+.persona-head {{ display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }}
+.persona-label {{ font-weight: 670; font-size: .98rem; }}
+.persona-tone {{ border-radius: 99px; padding: 2px 9px; white-space: nowrap; font-size: .68rem; font-weight: 600; }}
+.persona-text {{ font-size: .855rem; color: var(--ink-soft); margin: 0 0 9px; line-height: 1.68; }}
+.persona-bar {{ height: 5px; background: var(--line-soft); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }}
 .persona-bar > div {{ height: 100%; border-radius: 99px; }}
 .persona-support {{ display: block; }}
 
-/* ---------- 时间线 ---------- */
-.timeline {{ list-style: none; margin: 0; padding: 0 0 0 6px; position: relative; }}
-.timeline::before {{
-  content: ""; position: absolute; left: 11px; top: 6px; bottom: 6px;
-  width: 2px; background: var(--line); border-radius: 2px;
+/* ===================== 维度卡 ===================== */
+.dim-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.dim-card {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 15px; box-shadow: var(--shadow);
 }}
-.tl-node {{ position: relative; padding: 0 0 14px 30px; }}
+.dim-card.dim-na {{ background: var(--surface-alt); border-style: dashed; box-shadow: none; }}
+.dim-card h3 {{ font-size: 1rem; }}
+.dim-summary {{ font-size: .86rem; color: var(--ink-soft); margin: 0 0 .8em; line-height: 1.68; }}
+.mini-bars {{ margin: 0 0 .8em; }}
+.mini {{
+  display: grid; grid-template-columns: 66px 1fr 36px; align-items: center; gap: 9px;
+  font-size: .755rem; margin-bottom: 6px;
+}}
+.mini span {{ color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+.mini em {{ font-style: normal; text-align: right; font-variant-numeric: tabular-nums; font-weight: 660; }}
+.mini-track {{ height: 6px; background: var(--line-soft); border-radius: 99px; overflow: hidden; }}
+.mini-fill {{ height: 100%; border-radius: 99px; }}
+.chips {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 7px; }}
+.chip {{
+  background: var(--surface-alt); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 1px;
+}}
+.chip-na {{ background: #f4f3f4; border-color: transparent; opacity: .78; }}
+.chip-label {{ font-size: .69rem; color: var(--ink-faint); line-height: 1.42; }}
+.chip-val {{ font-size: .85rem; font-weight: 630; font-variant-numeric: tabular-nums; }}
+.chip-note {{ font-size: .655rem; color: var(--ink-faint); line-height: 1.42; }}
+
+/* ===================== 雷达 ===================== */
+.radar {{ width: 100%; max-width: 440px; height: auto; display: block; margin: 0 auto; }}
+
+/* ===================== 证据 ===================== */
+.ev-list {{ list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }}
+.ev {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 13px 14px; box-shadow: var(--shadow);
+}}
+.ev-head {{ display: flex; justify-content: space-between; font-size: .765rem; margin-bottom: 7px; }}
+.ev-who {{ font-weight: 660; }}
+.ev-when {{ color: var(--ink-faint); font-variant-numeric: tabular-nums; }}
+.ev blockquote {{
+  margin: 0 0 7px; padding: 9px 12px; background: var(--surface-alt);
+  border-left: 2px solid var(--line); border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: .865rem; white-space: pre-wrap; word-break: break-word; line-height: 1.68;
+}}
+.ev-reason {{ font-size: .71rem; color: var(--ink-faint); }}
+
+/* ===================== 加分/拖后腿 ===================== */
+.wins {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.win {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}}
+.win h4 {{ font-size: .92rem; }}
+.win ul {{ list-style: none; margin: 0; padding: 0; }}
+.win li {{
+  display: grid; grid-template-columns: 1fr auto auto; gap: 11px; align-items: baseline;
+  padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: .83rem;
+}}
+.win li:last-child {{ border-bottom: none; }}
+.win-score {{ font-weight: 690; font-variant-numeric: tabular-nums; }}
+
+/* ===================== 分账表 ===================== */
+.bds {{ display: grid; gap: 12px; }}
+.bd {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
+}}
+.bd h4 {{ display: flex; justify-content: space-between; align-items: baseline; font-size: .92rem; }}
+.bd-total {{ font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 640; }}
+.bd table {{ width: 100%; border-collapse: collapse; font-size: .795rem; }}
+.bd th, .bd td {{ padding: 6px 4px; border-bottom: 1px solid var(--line-soft); }}
+.bd th {{ color: var(--ink-faint); font-weight: 560; text-align: left; font-size: .71rem; }}
+.bd th.num, .bd td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+.bd tbody tr:last-child td {{ border-bottom: none; }}
+
+/* ===================== 时间线 ===================== */
+.timeline {{ list-style: none; margin: 0; padding: 2px 0 0 6px; position: relative; }}
+.timeline::before {{
+  content: ""; position: absolute; left: 10px; top: 12px; bottom: 12px;
+  width: 1.5px; background: var(--line); border-radius: 2px;
+}}
+.tl-node {{ position: relative; padding: 0 0 12px 30px; }}
+.tl-node:last-child {{ padding-bottom: 0; }}
 .tl-dot {{
-  position: absolute; left: 5px; top: 5px; width: 13px; height: 13px;
+  position: absolute; left: 4px; top: 13px; width: 13px; height: 13px;
   border-radius: 50%; border: 2.5px solid var(--bg); box-sizing: border-box;
 }}
-.tl-body {{ background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }}
+.tl-body {{
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 11px 13px; box-shadow: var(--shadow);
+}}
 .tl-head {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }}
-.tl-title {{ font-weight: 640; font-size: .9rem; }}
-.tl-when {{ font-size: .74rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }}
-.tl-detail {{ margin: 4px 0 0; font-size: .85rem; color: var(--ink-soft); }}
-svg.hourbars, svg.monthbars {{ width: 100%; height: auto; display: block; }}
+.tl-title {{ font-weight: 645; font-size: .885rem; }}
+.tl-when {{ font-size: .72rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }}
+.tl-detail {{ margin: 4px 0 0; font-size: .84rem; color: var(--ink-soft); line-height: 1.66; }}
+
+/* ===================== 注意项 ===================== */
+.caveats {{ margin: 0; padding-left: 20px; font-size: .825rem; color: var(--ink-soft); line-height: 1.7; }}
+.caveats li {{ margin-bottom: .35em; }}
+
+/* ===================== 安慰 ===================== */
+.comfort {{
+  background: linear-gradient(168deg, #fdf8f5 0%, #f7f3f8 100%);
+  border: 1px solid var(--line); border-radius: 20px; padding: 26px 20px;
+  box-shadow: var(--shadow);
+}}
+.comfort-inner {{ max-width: 62ch; margin: 0 auto; }}
+.comfort h2 {{ font-size: 1.16rem; color: #6b5f70; }}
+.comfort p {{ color: #5b5464; font-size: .905rem; line-height: 1.82; }}
+
+/* ===================== 页脚 ===================== */
+footer {{
+  margin-top: 30px; padding: 20px 16px 0; border-top: 1px solid var(--line);
+  font-size: .735rem; color: var(--ink-faint); line-height: 1.72;
+}}
+footer p {{ margin: 0 0 .6em; }}
+footer b {{ color: var(--ink-soft); }}
+
+/* ===================== 桌面端 ===================== */
+@media (min-width: 940px) {{
+  :root {{ --fs-base: 15.5px; }}
+  .layout {{ display: grid; grid-template-columns: var(--nav-w) minmax(0, 1fr); gap: 0; }}
+
+  .nav {{
+    position: sticky; top: 0; align-self: start; height: 100vh;
+    background: var(--nav-bg); border-bottom: none; border-right: 1px solid rgba(255, 255, 255, .07);
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: var(--shadow-nav); z-index: 60;
+  }}
+  .nav-brand {{ padding: 22px 20px 16px; gap: 10px; }}
+  .brand-mark {{ width: 30px; height: 30px; border-radius: 9px; font-size: 15px; }}
+  .brand-title {{ color: #fff; font-size: .95rem; }}
+  .brand-sub {{ color: rgba(255, 255, 255, .42); font-size: .7rem; }}
+
+  .nav-list {{
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 0 12px 16px; overflow-y: auto; overflow-x: hidden;
+  }}
+  .nav-list::-webkit-scrollbar {{ width: 4px; }}
+  .nav-list::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, .14); border-radius: 4px; }}
+  .nav-link {{
+    color: var(--nav-ink); font-size: .825rem; padding: 8px 11px;
+    border-radius: 8px; border-left: 2px solid transparent; border-radius: 0 8px 8px 0;
+    white-space: normal; line-height: 1.45;
+  }}
+  .nav-link:hover {{ background: rgba(255, 255, 255, .07); color: #fff; }}
+  .nav-link.is-active {{
+    background: rgba(255, 255, 255, .11); color: var(--nav-ink_active);
+    border-left-color: var(--peer); font-weight: 620;
+  }}
+  .nav-foot {{
+    display: block;
+    margin-top: auto; padding: 14px 20px 18px; font-size: .68rem; line-height: 1.6;
+    color: rgba(255, 255, 255, .34); border-top: 1px solid rgba(255, 255, 255, .07);
+  }}
+
+  .main {{ padding: 34px 40px 80px; max-width: 940px; }}
+  .section {{ margin-bottom: 52px; scroll-margin-top: 24px; }}
+  .section-head h2 {{ font-size: 1.4rem; }}
+  .verdict-grid {{ display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: center; }}
+  .gauge-wrap {{ margin: 0; max-width: none; }}
+  .verdict-text h1 {{ font-size: 2rem; }}
+  .stats {{ grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }}
+  .chart-grid {{ grid-template-columns: 1fr 1fr; }}
+  .dim-grid {{ grid-template-columns: 1fr 1fr; }}
+  .wins {{ grid-template-columns: 1fr 1fr; }}
+  .persona-grid {{ grid-template-columns: 1fr 1fr; }}
+  .card {{ padding: 22px 20px; }}
+}}
+@media (min-width: 1180px) {{
+  .main {{ max-width: 1020px; padding: 38px 48px 96px; }}
+}}
+
+@media print {{
+  body {{ background: #fff; }}
+  .nav {{ display: none; }}
+  .layout {{ display: block; }}
+  .main {{ padding: 0; max-width: none; }}
+  .card, .dim-card, .chart-card, .ev, .stat, .q-item, .persona-card, .tl-body {{
+    break-inside: avoid; box-shadow: none;
+  }}
+  .section {{ break-inside: avoid-page; }}
+}}
 """
 
 
@@ -1177,9 +1389,128 @@ svg.hourbars, svg.monthbars {{ width: 100%; height: auto; display: block; }}
 # 组装
 # --------------------------------------------------------------------------- #
 
+def _nav_items(analysis: Analysis) -> list[tuple[str, str, str, str]]:
+    """导航项：``(锚点 id, 图标, 标题, 一句话说明)``。
+
+    同时驱动侧栏导航、移动端标签栏与每个 section 的标题，
+    避免「导航里叫这个名字、内容里叫那个名字」。
+    """
+    return [
+        ("verdict", "🌼", "结论", "0–100 情感投入指数与等级判断"),
+        ("quantifiers", "🎯", "量化指标", "回复速度 · 消息频率 · 深夜 · 破冰 · 收尾"),
+        ("balance", "⚖️", "双方投入度与关键数据", "两个人的投入对比，以及一眼能看完的数字"),
+        ("footprint", "🧭", "聊天足迹", "跨度、最佳时段、活跃月份、最长一次与最长沉默"),
+        ("heatmap", "📅", "日历热力图", "仿 GitHub 贡献图，颜色深浅代表聊了多久"),
+        ("topics", "💬", "话题词云", "你们聊得最多的是什么"),
+        ("persona", "🪞", f"{analysis.peer} 是怎样的人", "基于可观测行为，不是性格判断"),
+        ("timeline", "📍", "关键节点", "这段关系里值得记下来的时刻"),
+        ("radar", "📊", "八维雷达图", "八个描述性维度的双方对比"),
+        ("dimensions", "🔍", "维度明细", "每个维度的子指标数据"),
+        ("trends", "📈", "互动趋势", "消息量 / 主动发起 / 情绪 / 回复速度"),
+        ("evidence", "🗂", "原话与证据", "加分项、拖后腿项与真实片段"),
+        ("score", "🧮", "分数是怎么算出来的", "完整权重与贡献分账"),
+        ("notes", "📌", "说明与免责", "数据问题、来源与免责声明"),
+    ]
+
+
+def _nav_html(items: list[tuple[str, str, str, str]], analysis: Analysis,
+              result: ScoreResult) -> str:
+    links = "".join(
+        f'<li><a class="nav-link" href="#{sid}">'
+        f'<span class="nav-ico" aria-hidden="true">{ico}</span>{esc(title)}</a></li>'
+        for sid, ico, title, _desc in items
+    )
+    return f"""
+<nav class="nav" aria-label="报告章节导航">
+  <div class="nav-brand">
+    <span class="brand-mark" aria-hidden="true">🌼</span>
+    <span class="brand-text">
+      <span class="brand-title">TA 到底爱不爱我</span>
+      <span class="brand-sub">{esc(analysis.peer)} × {esc(analysis.me)} · {result.total} 分</span>
+    </span>
+  </div>
+  <ul class="nav-list">{links}</ul>
+  <div class="nav-foot">
+    数据只在本地处理<br>
+    v{esc(__version__)}
+  </div>
+</nav>"""
+
+
+def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
+             body: str) -> str:
+    """包一个带序号与锚点的区块。"""
+    entry = next((it for it in items if it[0] == sid), None)
+    title = entry[2] if entry else sid
+    desc = entry[3] if entry else ""
+    desc_html = f'<p class="section-desc">{esc(desc)}</p>' if desc else ""
+    return f"""
+<section class="section" id="{sid}">
+  <div class="section-head">
+    <h2><span class="section-num">{index:02d}</span>{esc(title)}</h2>
+    {desc_html}
+  </div>
+  {body}
+</section>"""
+
+
+#: 滚动高亮（scroll-spy）。纯渐进增强：
+#: 禁用 JS 时导航链接依然可用（它们是普通锚点，靠 CSS ``scroll-behavior`` 平滑跳转），
+#: 只是不会自动高亮当前章节。**不含任何网络请求。**
+_SPY_SCRIPT = """
+<script>
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var sections = Object.keys(byId).map(function (id) { return document.getElementById(id); })
+                       .filter(Boolean);
+  if (!sections.length) return;
+
+  var visible = {};
+  function refresh() {
+    var best = null, bestTop = Infinity;
+    sections.forEach(function (s) {
+      if (!visible[s.id]) return;
+      var top = Math.abs(s.getBoundingClientRect().top);
+      if (top < bestTop) { bestTop = top; best = s.id; }
+    });
+    // 没有任何区块进入视野时，退化为「最后一个已滚过的区块」
+    if (!best) {
+      var y = window.scrollY + 120;
+      sections.forEach(function (s) { if (s.offsetTop <= y) best = s.id; });
+    }
+    if (!best) return;
+    links.forEach(function (a) {
+      a.classList.toggle('is-active', a === byId[best]);
+    });
+    var active = byId[best];
+    if (active && active.scrollIntoView && window.innerWidth < 940) {
+      active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+    refresh();
+  }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+
+  sections.forEach(function (s) { io.observe(s); });
+  window.addEventListener('scroll', refresh, { passive: true });
+  window.addEventListener('resize', refresh);
+  refresh();
+})();
+</script>
+"""
+
+
 def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
                *, assumed: bool = False) -> str:
     """生成完整的单文件 HTML。
+
+    结构：**左侧固定导航 + 右侧内容**（桌面端），移动端折叠为顶部可横滑的标签栏。
+    导航与区块标题共用 :func:`_nav_items` 这一份数据，改标题只需改一处。
 
     ``assumed=True`` 表示「我」是自动推断的（用户没给 ``--me``），
     报告会显著提示这一点——搞反了会让结论整体颠倒。
@@ -1193,6 +1524,84 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
         )
 
     dims = list(analysis.dimensions.values())
+    nav = _nav_items(analysis)
+
+    # 区块序号按导航顺序生成，正文顺序与导航一致
+    order = {sid: i + 1 for i, (sid, *_rest) in enumerate(nav)}
+
+    def sec(sid: str, body: str) -> str:
+        return _section(sid, order[sid], nav, body)
+
+    quant_body = f"""
+    <p class="tiny faint" style="margin-bottom:12px">
+      这一组指标只看 <b>{esc(analysis.peer)}</b> 的行为信号：回得多快、一次能连发几条、
+      深夜还在不在、冷战之后谁先开口、一段对话最后由谁收尾。
+    </p>
+    {render_quantifiers(analysis)}"""
+
+    footprint_body = f"""
+    <p class="tiny faint" style="margin-bottom:12px">
+      从第一条消息一直算到今天。所有数字都来自消息时间戳，没有估算。
+    </p>
+    {render_footprint(analysis)}"""
+
+    heatmap_body = f"""
+    <p class="tiny faint" style="margin-bottom:12px">
+      仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
+      （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
+    </p>
+    {render_heatmap_section(analysis)}"""
+
+    topics_body = f"""
+    <p class="tiny faint" style="margin-bottom:12px">
+      取聊天记录里出现最多的话题关键词。颜色表示这个话题主要由谁说起。
+    </p>
+    {render_topics(analysis)}"""
+
+    timeline_body = f"""
+    <p class="tiny faint" style="margin-bottom:12px">
+      这段关系里值得被记下来的时刻，按时间排列。
+    </p>
+    {render_timeline(analysis)}"""
+
+    radar_body = f'<div class="card">{render_radar(dims, analysis.me, analysis.peer)}</div>'
+
+    balance_body = f"""
+    <div class="card">
+      <h3 style="font-size:.95rem;margin-bottom:10px">双方的投入度</h3>
+      {render_dual_bars(result, analysis)}
+    </div>
+    <h3 style="font-size:.95rem;margin:20px 0 10px">关键数据</h3>
+    {render_cards(analysis)}"""
+
+    evidence_body = f"""
+    {render_winners(result)}
+    <p class="tiny faint" style="margin:20px 0 12px">
+      下面每一句都来自你导入的文件，没有改写、没有生成。自己复核一遍，比相信分数更重要。
+    </p>
+    {render_evidence(result, analysis)}"""
+
+    score_body = f"""
+    <details class="conf" open>
+      <summary>展开 / 收起明细</summary>
+      <p class="tiny faint">
+        <b>总分由两个视角综合而成</b>：八维模型（覆盖面广）与五个量化指标
+        （聚焦 TA 的行为信号）。两者先各自算成 0–100，再按权重综合：
+        <b>{esc(result.blend_note)}</b>
+      </p>
+      <p class="tiny faint">
+        每个维度先算出若干子指标，各自映射到 0–100 后加权得到维度分，维度分再加权得到总分。
+        无法计算的维度会被剔除，权重重新归一化——<b>不会当成 0 分</b>。
+        下面是 {esc(analysis.peer)} 视角的完整分账。
+      </p>
+      {render_breakdown(result, analysis)}
+    </details>"""
+
+    notes_body = f"""
+    <p class="tiny faint">
+      解析自：{esc(getattr(conv_report, 'path', '（未记录）') if conv_report else '（未记录）')}
+    </p>
+    {render_caveats(analysis, conv_report)}"""
 
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -1205,140 +1614,44 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
 <style>{_css()}</style>
 </head>
 <body>
-<div class="wrap">
+<div class="layout">
 
-  {render_verdict(result, analysis, assumed=assumed)}
+  {_nav_html(nav, analysis, result)}
 
-  <section>
-    <h2>五个量化指标</h2>
-    <p class="tiny faint">
-      这一组指标只看 <b>{esc(analysis.peer)}</b> 的行为信号：回得多快、
-      一次能连发几条、深夜还在不在、冷战之后谁先开口、一段对话最后由谁收尾。
-      每一项都写明了计算口径与数据来源，你可以自己复核。
-    </p>
-    {render_quantifiers(analysis)}
-  </section>
+  <main class="main">
 
-  <section>
-    <h2>双方投入度</h2>
-    <div class="card">
-      {render_dual_bars(result, analysis)}
-    </div>
-  </section>
+    {sec("verdict", render_verdict(result, analysis, assumed=assumed))}
+    {sec("quantifiers", quant_body)}
+    {sec("balance", balance_body)}
+    {sec("footprint", footprint_body)}
+    {sec("heatmap", heatmap_body)}
+    {sec("topics", topics_body)}
+    {sec("persona", render_persona_section(analysis))}
+    {sec("timeline", timeline_body)}
+    {sec("radar", radar_body)}
+    {sec("dimensions", render_dimensions(analysis))}
+    {sec("trends", render_trends(analysis, analysis.periods))}
+    {sec("evidence", evidence_body)}
+    {sec("score", score_body)}
 
-  <section>
-    <h2>关键数据</h2>
-    {render_cards(analysis)}
-  </section>
+    {sec("notes", notes_body)}
 
-  <section>
-    <h2>聊天足迹</h2>
-    <p class="tiny faint">
-      从第一条消息一直算到今天。所有数字都来自消息时间戳，没有估算。
-    </p>
-    {render_footprint(analysis)}
-  </section>
+    {render_comfort(result)}
 
-  <section>
-    <h2>聊天日历热力图</h2>
-    <p class="tiny faint">
-      仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
-      （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
-    </p>
-    {render_heatmap_section(analysis)}
-  </section>
+    <footer>
+      <p><b>数据只在本地处理。</b>这份报告由 loves-me-not 在你的设备上离线生成，
+      全程没有任何网络请求；你的聊天记录没有被上传到任何地方。</p>
+      <p><b>结果仅供参考，不构成对真实关系的判断。</b>
+      {esc(result.disclaimer)}</p>
+      <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
+      手机没电，或者他本来就不太会说话。</p>
+      {group_notice}
+      <p>生成时间：{esc(generated)} · loves-me-not v{esc(__version__)}</p>
+    </footer>
 
-  <section>
-    <h2>你们都在聊什么</h2>
-    <p class="tiny faint">
-      取聊天记录里出现最多的话题关键词。颜色表示这个话题主要由谁说起。
-    </p>
-    {render_topics(analysis)}
-  </section>
-
-  <section>
-    <h2>{esc(analysis.peer)} 是一个怎样的人</h2>
-    {render_persona_section(analysis)}
-  </section>
-
-  <section>
-    <h2>关键节点</h2>
-    <p class="tiny faint">
-      这段关系里值得被记下来的时刻，按时间排列。
-    </p>
-    {render_timeline(analysis)}
-  </section>
-
-  <section>
-    <h2>八维雷达图</h2>
-    <div class="card">
-      {render_radar(dims, analysis.me, analysis.peer)}
-    </div>
-  </section>
-
-  <section>
-    <h2>维度明细</h2>
-    {render_dimensions(analysis)}
-  </section>
-
-  <section>
-    <h2>互动趋势</h2>
-    {render_trends(analysis, analysis.periods)}
-  </section>
-
-  <section>
-    <h2>主要加分项与拖后腿项</h2>
-    {render_winners(result)}
-  </section>
-
-  <section>
-    <h2>支撑结论的原话</h2>
-    <p class="tiny faint">
-      下面每一句都来自你导入的文件，没有改写、没有生成。自己复核一遍，比相信分数更重要。
-    </p>
-    {render_evidence(result, analysis)}
-  </section>
-
-  <section>
-    <h2>分数是怎么算出来的</h2>
-    <details class="conf" open>
-      <summary>展开 / 收起明细</summary>
-      <p class="tiny faint">
-        <b>总分由两个视角综合而成</b>：八维模型（覆盖面广）与五个量化指标
-        （聚焦 TA 的行为信号）。两者先各自算成 0–100，再按权重综合：
-        {esc(result.blend_note)}
-      </p>
-      <p class="tiny faint">
-        每个维度先算出若干子指标，各自映射到 0–100 后加权得到维度分，维度分再加权得到总分。
-        无法计算的维度会被剔除，权重重新归一化——<b>不会当成 0 分</b>。
-        下面是 {esc(analysis.peer)} 视角的完整分账。
-      </p>
-      {render_breakdown(result, analysis)}
-    </details>
-  </section>
-
-  {render_comfort(result)}
-
-  <section>
-    <h2>数据说明与免责</h2>
-    <p class="tiny faint">
-      解析自：{esc(getattr(conv_report, 'path', '（未记录）') if conv_report else '（未记录）')}
-    </p>
-    {render_caveats(analysis, conv_report)}
-  </section>
-
-  <footer>
-    <p><b>数据只在本地处理。</b>这份报告由 loves-me-not 在你的设备上离线生成，
-    全程没有任何网络请求；你的聊天记录没有被上传到任何地方。</p>
-    <p><b>结果仅供参考，不构成对真实关系的判断。</b>
-    {esc(result.disclaimer)}</p>
-    <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
-    手机没电，或者他本来就不太会说话。</p>
-    <p>{group_notice}</p>
-    <p>生成时间：{esc(generated)} · loves-me-not v{esc(__version__)}</p>
-  </footer>
-
+  </main>
 </div>
+{_SPY_SCRIPT}
 </body>
 </html>
 """
