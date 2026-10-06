@@ -466,10 +466,17 @@ class TestReport(unittest.TestCase):
             )
         self.assertIn("html.anim-ready [data-reveal]", styles)
 
-    def test_reveal_has_last_resort_timeout(self):
-        """主脚本必须有最终兜底：无论如何都要把内容显示出来。"""
-        self.assertIn("1500", self.html)   # 1.5 秒兜底计时器
-        self.assertIn("is-in", self.html)
+    def test_reveal_has_multiple_watchdogs(self):
+        """揭示必须有兜底：滚动不触发时也要把内容显示出来。
+
+        「关键节点整页空白」就是栽在这里——元素初始隐藏，
+        而滚动回调在滚动吸附跳转等场景下不一定会触发。
+        """
+        self.assertIn("showAll", self.html)
+        # 两个看门狗定时器：600ms 全显 + 2000ms 二次兜底
+        self.assertIn("600", self.html)
+        self.assertIn("2000", self.html)
+        self.assertIn("MutationObserver", self.html)
 
     def test_section_headings_never_hidden(self):
         """标题不参与入场动画——出现「有内容没标题」的缺口比没动画更糟。"""
@@ -479,9 +486,36 @@ class TestReport(unittest.TestCase):
         for h in heads:
             self.assertNotIn("data-reveal", h, f"标题不应参与入场：{h}")
 
-    def test_has_charset_and_viewport(self):
+    def test_has_charset_and_fixed_viewport(self):
+        """刻意不做移动端适配：版式锁定桌面宽度，手机上整体等比缩小。"""
         self.assertIn('<meta charset="utf-8">', self.html)
-        self.assertIn("width=device-width", self.html)
+        self.assertIn('name="viewport"', self.html)
+        self.assertIn("width=1240", self.html)
+        self.assertNotIn("width=device-width", self.html)
+
+    def test_no_responsive_layout_media_queries(self):
+        """不应再有任何按视口宽度重排布局的媒体查询。"""
+        import re as _re
+        styles = "".join(_re.findall(r"<style>(.*?)</style>", self.html, _re.S))
+        width_queries = _re.findall(r"@media[^{]*\((?:min|max)-width[^{]*\)", styles)
+        self.assertEqual(width_queries, [],
+                         f"仍有响应式布局媒体查询：{width_queries}")
+
+    def test_sections_are_scroll_snap_pages(self):
+        """一页一页翻：html 开滚动吸附，每个 section 都是吸附点。"""
+        import re as _re
+        styles = "".join(_re.findall(r"<style>(.*?)</style>", self.html, _re.S))
+        self.assertIn("scroll-snap-type: y mandatory", styles)
+        self.assertIn("scroll-snap-align: start", styles)
+        self.assertIn("min-height: 100vh", styles)
+        # 每个区块都要有页码
+        self.assertEqual(len(_re.findall(r'class="page-mark"', self.html)),
+                         len(_re.findall(r'class="section"', self.html)))
+
+    def test_keyboard_paging_present(self):
+        """键盘翻页：方向键 / PageUp / PageDown / Home / End。"""
+        for key in ("ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End"):
+            self.assertIn(key, self.html, f"缺少键盘翻页：{key}")
 
     def test_has_in_page_navigation(self):
         """页面内导航：每个区块都有锚点，导航项与区块一一对应。"""

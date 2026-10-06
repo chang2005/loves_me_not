@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-2fa37a)](#-安装)
 [![Local Only](https://img.shields.io/badge/数据-仅本地处理-e1487f)](#-隐私与法律红线)
-[![Tests](https://img.shields.io/badge/tests-180%20passed-2fa37a)](#-测试)
+[![Tests](https://img.shields.io/badge/tests-183%20passed-2fa37a)](#-测试)
 [![License](https://img.shields.io/badge/license-MIT-8a4fd8)](LICENSE)
 
 [功能特性](#-功能特性) ·
@@ -38,15 +38,12 @@
 ## 📸 先看效果
 
 <p align="center">
-  <img src="docs/screenshot-verdict.webp" alt="报告首屏：环形仪表盘、等级结论与可信度" width="820">
+  <img src="docs/screenshot-verdict.webp" alt="报告首屏：环形仪表盘、等级结论与可信度" width="860">
 </p>
 
-左侧是固定导航（14 个章节），首屏直接给结论：环形仪表盘、等级大字、
-可信度说明与综合算式，不用翻页就能看完。移动端自动折叠为顶部可横滑的标签栏：
-
-<p align="center">
-  <img src="docs/screenshot-mobile.webp" alt="移动端样式" width="300">
-</p>
+**一页一页往下翻**：左侧是固定导航（14 页），每一页至少占满一屏、
+顶部对齐吸附点，滚轮与键盘都会「停」在整页上。
+首屏直接给结论——环形仪表盘、等级大字、可信度与综合算式，不用翻页就能看完。
 
 ---
 
@@ -344,16 +341,36 @@ localId,Time,Sender,Content
 
 ## 🖼 报告里有什么
 
-单文件 HTML，**左侧固定导航**（14 个章节），滚动时自动高亮当前章节。
-移动端折叠为顶部可横滑的标签栏。导航是普通锚点链接，
-**禁用 JavaScript 也照样能用**。
+单文件 HTML，**左侧固定导航**，一共 14 页。
+**一页一页往下翻**——每页至少占满一屏，靠 CSS 滚动吸附（`scroll-snap`）实现
+「翻页」而不是「连续滚动」，右下角有页码 `03 / 14`。
+
+**翻页方式**：
+
+| 操作 | 效果 |
+|---|---|
+| 滚轮 / 触摸板 | 翻到上/下一页（吸附对齐，不会停在半页） |
+| `↓` `↑` | 下一页 / 上一页 |
+| `PageDown` `PageUp` / 空格 | 同上 |
+| `Home` `End` | 跳到第一页 / 最后一页 |
+| 点击左侧导航 | 直接跳到该页 |
+
+内容多到超过一屏的页（如「维度明细」「分数是怎么算出来的」）会自然变高，
+不为了塞进一屏而压缩可读性——它依然是一个吸附点，只是需要多滚几下读完。
+
+> **关于移动端**：这一版**刻意不做移动端适配**。
+> 版式固定为 1240px 宽的桌面布局并写入 viewport，
+> 手机上会整体等比缩小显示（而不是重排成单列），
+> 这样每一页的构图在任何设备上都一致，翻页节奏也就稳定了。
+> 代价是小屏上需要双指放大阅读——如果你的场景主要是手机，
+> 可以在 `loves_me_not/report.py` 的 `_css()` 里补一组 `min-width` 媒体查询还原响应式。
 
 ### 五个量化指标
 
 每一项都写明口径、来源、权重与贡献，可以自己复核：
 
 <p align="center">
-  <img src="docs/screenshot-quantifiers.webp" alt="五个量化指标，附计算口径与数据来源" width="820">
+  <img src="docs/screenshot-quantifiers.webp" alt="五个量化指标，附计算口径与数据来源" width="860">
 </p>
 
 ### 聊天足迹
@@ -362,7 +379,7 @@ localId,Time,Sender,Content
 以及 24 小时活跃度与月度分布：
 
 <p align="center">
-  <img src="docs/screenshot-footprint.webp" alt="聊天足迹：跨度、时段、最长一次与最长沉默" width="820">
+  <img src="docs/screenshot-footprint.webp" alt="聊天足迹：跨度、时段、最长一次与最长沉默" width="860">
 </p>
 
 ### 日历热力图
@@ -374,7 +391,7 @@ localId,Time,Sender,Content
 > 这里衡量的是**真正交谈的时间密度**。
 
 <p align="center">
-  <img src="docs/screenshot-heatmap.webp" alt="日历热力图，颜色深浅代表对话时长" width="820">
+  <img src="docs/screenshot-heatmap.webp" alt="日历热力图，颜色深浅代表对话时长" width="860">
 </p>
 
 ### 话题词云
@@ -382,13 +399,22 @@ localId,Time,Sender,Content
 字号 = 加权词频，颜色 = 这个话题主要由谁说起：
 
 <p align="center">
-  <img src="docs/screenshot-topics.webp" alt="话题词云" width="820">
+  <img src="docs/screenshot-topics.webp" alt="话题词云" width="860">
 </p>
 
 ### 「TA 是一个怎样的人」
 
 <p align="center">
-  <img src="docs/screenshot-persona.webp" alt="行为画像卡片，附支撑数字" width="820">
+  <img src="docs/screenshot-persona.webp" alt="行为画像卡片，附支撑数字" width="860">
+</p>
+
+### 关键节点
+
+第一次说话、最长的一次聊天、最长的一次沉默、最暖与最冷的一天、
+热度转折点……按时间排列：
+
+<p align="center">
+  <img src="docs/screenshot-timeline.webp" alt="关键节点时间线" width="860">
 </p>
 
 ### 结尾的个性化文案
@@ -396,7 +422,7 @@ localId,Time,Sender,Content
 按等级选的通用安慰之外，还有一句**只属于这份记录**的话：
 
 <p align="center">
-  <img src="docs/screenshot-closing.webp" alt="结尾的个性化文案" width="760">
+  <img src="docs/screenshot-closing.webp" alt="结尾的个性化文案" width="800">
 </p>
 
 候选观察有八类：深夜还在回你、一次聊得格外久、某个月是峰值、
@@ -422,10 +448,16 @@ localId,Time,Sender,Content
 词云由大到小浮现、卡片悬停轻微浮起。全部尊重 `prefers-reduced-motion`。
 
 > [!IMPORTANT]
-> **动效安全**：元素默认是**可见**的，只有脚本加上 `html.anim-ready` 之后，
-> CSS 才把它们藏起来等待入场。所以脚本没跑、跑挂或被浏览器拦掉时，
-> 页面就是一份「没有动画的正常文档」，而不是一片空白。
-> 主脚本另有 1.5 秒兜底，会把任何仍未显示的内容强制显示出来。
+> **动效安全**（这里踩过两个很贵的坑，都已写成测试锁住）
+>
+> 1. **元素默认可见**，只有脚本加上 `html.anim-ready` 之后 CSS 才把它们藏起来
+>    等待入场。所以脚本没跑、跑挂或被浏览器拦掉时，页面就是一份
+>    「没有动画的正常文档」，而不是一片空白。
+> 2. **揭示逻辑不依赖任何单一事件**。曾经因为「元素初始隐藏 + 滚动回调没触发」，
+>    导致「关键节点」整页空白。现在有三道保险：只要还有元素没显示就用
+>    `requestAnimationFrame` 持续检查、0.6s 与 2s 两个看门狗定时器、
+>    以及 `MutationObserver` 兜住动态内容。
+>    宁可少一个动画，也绝不让读者看到空白。
 
 ---
 
@@ -435,7 +467,7 @@ localId,Time,Sender,Content
 python -m unittest discover -s tests -v
 ```
 
-**180 项测试**，其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
+**183 项测试**，其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
 
 - 无信息的维度必须被剔除，而不是当成 0 分（含「表情线索不可得」的情形）
 - 样本不足必须降级为「样本不足」，不得输出强结论
@@ -448,6 +480,8 @@ python -m unittest discover -s tests -v
 - 个性化文案里的数字必须与真实统计对得上
 - 词云排版不得重叠；仪表盘 dasharray 长度必须与分数成比例
 - 报告必须自包含；`[data-reveal]` 的基础规则里**不许**出现 `opacity: 0`
+- 揭示必须有看门狗兜底，且每个区块都要有页码
+- 不得残留任何按视口宽度重排布局的媒体查询（已取消移动端适配）
 - 内联脚本必须通过 `node --check` 语法校验
 - 包内不许出现任何网络或子进程依赖（守住「全本地」）
 
@@ -472,7 +506,7 @@ loves-me-not/
 │   └── report.py            # 单文件 HTML / JSON 生成
 ├── samples/                 # 合成示例数据（非真实记录）
 ├── demo/                    # 由示例数据生成的成品报告
-└── tests/                   # 180 项单元测试
+└── tests/                   # 183 项单元测试
 ```
 
 ### 想看看它长什么样？

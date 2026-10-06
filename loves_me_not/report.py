@@ -980,6 +980,9 @@ def _css() -> str:
   --shadow: 0 1px 2px rgba(42, 39, 49, .04), 0 8px 24px -12px rgba(42, 39, 49, .14);
   --shadow-nav: 0 10px 30px -12px rgba(34, 31, 40, .5);
   --nav-w: 232px;
+  /* 固定版式宽度：配合 <meta name="viewport" width=1240>，
+     手机上整体等比缩小，而不是重排成单列 */
+  --page-w: 1240px;
   --fs-base: 15px;
 }}
 
@@ -1011,65 +1014,113 @@ img, svg {{ max-width: 100%; }}
   color: var(--ink-faint); margin: 0 0 .4em; font-weight: 600;
 }}
 
-/* ===================== 双栏骨架 ===================== */
-.layout {{ display: block; }}
+/* ===================== 双栏骨架（固定桌面版式，不做移动端适配） =====================
+   版式宽度锁定在 --page-w（1240px），配合 <meta name="viewport" width=1240>，
+   手机上会整体等比缩小显示，而不是重排成单列。
+   这样每一页的构图在任何设备上都一致，翻页的节奏也就稳定了。 */
+.layout {{
+  display: grid;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  width: 100%;
+  max-width: var(--page-w);
+  margin: 0 auto;
+  /* 不要写 align-items: start —— 那会让侧栏只按内容高度收缩，
+     高度撑不满一屏，翻页时露出的空白也不好看。 */
+  align-items: stretch;
+}}
 
 .nav {{
   position: sticky; top: 0; z-index: 60;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
-  border-bottom: 1px solid var(--line);
+  height: 100vh;
+  background: var(--nav-bg);
+  border-right: 1px solid rgba(255, 255, 255, .07);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--shadow-nav);
 }}
-.nav-brand {{
-  display: flex; align-items: center; gap: 9px;
-  padding: 11px 16px 8px;
-}}
+.nav-brand {{ display: flex; align-items: center; gap: 10px; padding: 22px 20px 16px; }}
 .brand-mark {{
-  width: 26px; height: 26px; border-radius: 8px; flex: none;
+  width: 30px; height: 30px; border-radius: 9px; flex: none;
   background: linear-gradient(135deg, var(--peer), var(--accent));
   display: grid; place-items: center;
-  color: #fff; font-size: 13px; font-weight: 700;
+  color: #fff; font-size: 15px; font-weight: 700;
 }}
 .brand-text {{ display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }}
-.brand-title {{ font-size: .88rem; font-weight: 660; }}
-.brand-sub {{ font-size: .68rem; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+.brand-title {{ font-size: .95rem; font-weight: 660; color: #fff; }}
+.brand-sub {{ font-size: .7rem; color: rgba(255, 255, 255, .42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
 
 .nav-list {{
-  display: flex; gap: 4px; list-style: none; margin: 0;
-  padding: 0 12px 9px; overflow-x: auto; scrollbar-width: none;
+  display: flex; flex-direction: column; gap: 1px; list-style: none; margin: 0;
+  padding: 0 12px 16px; overflow-y: auto; overflow-x: hidden;
 }}
-.nav-list::-webkit-scrollbar {{ display: none; }}
-/* 侧栏脚注只在桌面端出现；移动端隐藏，否则会夹在标签栏与正文之间 */
-.nav-foot {{ display: none; }}
+.nav-list::-webkit-scrollbar {{ width: 4px; }}
+.nav-list::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, .14); border-radius: 4px; }}
 .nav-link {{
-  display: block; white-space: nowrap; text-decoration: none;
-  color: var(--ink-soft); font-size: .8rem; font-weight: 550;
-  padding: 6px 11px; border-radius: 99px; border: 1px solid transparent;
-  transition: background .18s, color .18s, border-color .18s;
+  display: block; text-decoration: none; line-height: 1.45;
+  color: var(--nav-ink); font-size: .825rem; font-weight: 550;
+  padding: 8px 11px; border-radius: 0 8px 8px 0;
+  border-left: 2px solid transparent;
+  transition: background .25s ease, color .25s ease, border-color .25s ease;
 }}
-.nav-link:hover {{ background: var(--surface); color: var(--ink); }}
+.nav-link:hover {{ background: rgba(255, 255, 255, .07); color: #fff; }}
 .nav-link .nav-ico {{ margin-right: 4px; opacity: .85; }}
 .nav-link.is-active {{
-  background: var(--ink); color: #fff; border-color: var(--ink);
+  background: rgba(255, 255, 255, .11); color: var(--nav-ink-active);
+  border-left-color: var(--peer); font-weight: 620;
 }}
 .nav-link.is-active .nav-ico {{ opacity: 1; }}
-
-.main {{ padding: 20px 16px 60px; max-width: 100%; }}
-
-/* ===================== 区块 ===================== */
-.section {{ margin: 0 0 40px; scroll-margin-top: 84px; }}
-.section-head {{ margin: 0 0 14px; }}
-.section-head h2 {{
-  font-size: 1.22rem; margin: 0 0 .2em;
-  display: flex; align-items: center; gap: 9px;
+.nav-foot {{
+  display: block; margin-top: auto; padding: 14px 20px 18px;
+  font-size: .68rem; line-height: 1.6; color: rgba(255, 255, 255, .34);
+  border-top: 1px solid rgba(255, 255, 255, .07);
 }}
+
+.main {{ padding: 0 48px; min-width: 0; }}
+
+/* ===================== 一页一页翻页 =====================
+   每一页 = 一个 section，至少占满一屏，顶部对齐吸附点。
+   scroll-snap-type: y mandatory 让滚轮 / 触摸 / 键盘翻页都「停」在整页上。 */
+html {{
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 0;
+  scroll-behavior: smooth;
+}}
+.section {{
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 64px 0 56px;
+  margin: 0;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}}
+/* 内容本来就很长的页：让它们自然变高，不要为了塞进一屏而压缩可读性 */
+.section.is-tall {{ justify-content: flex-start; }}
+.section:last-of-type {{ border-bottom: none; }}
+
+/* 页码：右上角的「03 / 14」 */
+.page-mark {{
+  display: flex; align-items: baseline; gap: 6px;
+  margin: 0 0 6px; color: var(--ink-faint);
+  font-size: .7rem; letter-spacing: .08em; font-variant-numeric: tabular-nums;
+}}
+.page-mark b {{ color: var(--peer); font-weight: 700; font-size: .82rem; }}
+
+.comfort {{ scroll-snap-align: start; scroll-snap-stop: always; margin: 0; padding: 64px 0; }}
+footer {{ scroll-snap-align: start; scroll-snap-stop: always; margin: 0; padding: 48px 0 72px; }}
+
+/* 区块之间的分隔线已经承担了节奏感，内部再收紧一点间距 */
+.section-head {{ margin: 0 0 18px; }}
+.section-head h2 {{ font-size: 1.42rem; }}
+.section-desc {{ font-size: .855rem; }}
 .section-num {{
   font-size: .7rem; font-weight: 700; letter-spacing: .06em;
   color: var(--accent); background: var(--accent-soft);
   padding: 2px 7px; border-radius: 6px; flex: none;
 }}
-.section-desc {{ color: var(--ink-soft); font-size: .84rem; margin: 0; max-width: 68ch; }}
+.section-desc {{ color: var(--ink-soft); font-size: .855rem; margin: 0; max-width: 70ch; }}
 
 .card {{
   background: var(--surface); border: 1px solid var(--line);
@@ -1089,7 +1140,7 @@ img, svg {{ max-width: 100%; }}
 .banner-insufficient {{ background: #fdf7ec; border-color: #efdcbb; color: #8a6524; }}
 .banner-assumed {{ background: #fdf1f4; border-color: #eecbd6; color: #8d4f62; }}
 
-.verdict-grid {{ display: block; }}
+.verdict-grid {{ display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 32px; align-items: center; }}
 .gauge-wrap {{ max-width: 300px; margin: 0 auto 6px; }}
 svg.gauge {{ width: 100%; height: auto; display: block; }}
 .gauge-num {{ font-size: 74px; font-weight: 700; letter-spacing: -.03em; }}
@@ -1188,7 +1239,7 @@ details.conf li {{ margin-bottom: .2em; }}
 }}
 
 /* ===================== 图表栅格 ===================== */
-.chart-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.chart-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
 .chart-card {{
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 15px; box-shadow: var(--shadow);
@@ -1230,7 +1281,7 @@ svg.wordcloud text {{ font-family: inherit; }}
   background: var(--surface-alt); border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm); padding: 11px 13px; line-height: 1.7; margin-bottom: 12px;
 }}
-.persona-grid {{ display: grid; grid-template-columns: 1fr; gap: 10px; }}
+.persona-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }}
 .persona-card {{
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow);
@@ -1244,7 +1295,7 @@ svg.wordcloud text {{ font-family: inherit; }}
 .persona-support {{ display: block; }}
 
 /* ===================== 维度卡 ===================== */
-.dim-grid {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.dim-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
 .dim-card {{
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 16px 15px; box-shadow: var(--shadow);
@@ -1292,7 +1343,7 @@ svg.wordcloud text {{ font-family: inherit; }}
 .ev-reason {{ font-size: .71rem; color: var(--ink-faint); }}
 
 /* ===================== 加分/拖后腿 ===================== */
-.wins {{ display: grid; grid-template-columns: 1fr; gap: 12px; }}
+.wins {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
 .win {{
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--radius); padding: 15px; box-shadow: var(--shadow);
@@ -1363,66 +1414,19 @@ footer {{
 footer p {{ margin: 0 0 .6em; }}
 footer b {{ color: var(--ink-soft); }}
 
-/* ===================== 桌面端 ===================== */
-@media (min-width: 940px) {{
-  :root {{ --fs-base: 15.5px; }}
-  .layout {{ display: grid; grid-template-columns: var(--nav-w) minmax(0, 1fr); gap: 0; }}
-
-  .nav {{
-    position: sticky; top: 0; align-self: start; height: 100vh;
-    background: var(--nav-bg); border-bottom: none; border-right: 1px solid rgba(255, 255, 255, .07);
-    display: flex; flex-direction: column; overflow: hidden;
-    box-shadow: var(--shadow-nav); z-index: 60;
-  }}
-  .nav-brand {{ padding: 22px 20px 16px; gap: 10px; }}
-  .brand-mark {{ width: 30px; height: 30px; border-radius: 9px; font-size: 15px; }}
-  .brand-title {{ color: #fff; font-size: .95rem; }}
-  .brand-sub {{ color: rgba(255, 255, 255, .42); font-size: .7rem; }}
-
-  .nav-list {{
-    display: flex; flex-direction: column; gap: 1px;
-    padding: 0 12px 16px; overflow-y: auto; overflow-x: hidden;
-  }}
-  .nav-list::-webkit-scrollbar {{ width: 4px; }}
-  .nav-list::-webkit-scrollbar-thumb {{ background: rgba(255, 255, 255, .14); border-radius: 4px; }}
-  .nav-link {{
-    color: var(--nav-ink); font-size: .825rem; padding: 8px 11px;
-    border-radius: 8px; border-left: 2px solid transparent; border-radius: 0 8px 8px 0;
-    white-space: normal; line-height: 1.45;
-  }}
-  .nav-link:hover {{ background: rgba(255, 255, 255, .07); color: #fff; }}
-  .nav-link.is-active {{
-    background: rgba(255, 255, 255, .11); color: var(--nav-ink_active);
-    border-left-color: var(--peer); font-weight: 620;
-  }}
-  .nav-foot {{
-    display: block;
-    margin-top: auto; padding: 14px 20px 18px; font-size: .68rem; line-height: 1.6;
-    color: rgba(255, 255, 255, .34); border-top: 1px solid rgba(255, 255, 255, .07);
-  }}
-
-  .main {{ padding: 34px 40px 80px; max-width: 940px; }}
-  .section {{ margin-bottom: 52px; scroll-margin-top: 24px; }}
-  .section-head h2 {{ font-size: 1.4rem; }}
-  .verdict-grid {{ display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 30px; align-items: center; }}
-  .gauge-wrap {{ margin: 0; max-width: none; }}
-  .verdict-text h1 {{ font-size: 2rem; }}
-  .stats {{ grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); }}
-  .chart-grid {{ grid-template-columns: 1fr 1fr; }}
-  .dim-grid {{ grid-template-columns: 1fr 1fr; }}
-  .wins {{ grid-template-columns: 1fr 1fr; }}
-  .persona-grid {{ grid-template-columns: 1fr 1fr; }}
-  .card {{ padding: 22px 20px; }}
-}}
-@media (min-width: 1180px) {{
-  .main {{ max-width: 1020px; padding: 38px 48px 96px; }}
-}}
-
+/* ===================== 打印 =====================
+   打印时取消翻页吸附，让内容自然连续排布。
+   （这里已经没有媒体查询式的响应式布局了：版式固定为桌面宽度。） */
 @media print {{
+  html {{ scroll-snap-type: none; }}
   body {{ background: #fff; }}
   .nav {{ display: none; }}
-  .layout {{ display: block; }}
-  .main {{ padding: 0; max-width: none; }}
+  .layout {{ display: block; max-width: none; }}
+  .main {{ padding: 0; }}
+  .section {{
+    min-height: 0; padding: 18px 0; border-bottom: none;
+    display: block; scroll-snap-align: none;
+  }}
   .card, .dim-card, .chart-card, .ev, .stat, .q-item, .persona-card, .tl-body {{
     break-inside: avoid; box-shadow: none;
   }}
@@ -1482,12 +1486,16 @@ html.no-motion [data-heat-cell] {{ animation: none; opacity: 1; }}
   }}
 }}
 
-/* --- 热力图格子：像涟漪一样铺开 --- */
+/* --- 热力图格子：像涟漪一样铺开 ---
+   动画只在「该区块被揭示之后」才播放（挂在 .is-in 上）。
+   之前是页面一加载就播，而热力图在几千像素之下，
+   等读者翻到那里动画早就放完了，既看不到动效又要等它跑完。
+   （此处注释避免 markdown 星号：注释也在 HTML 源码里。） */
 @keyframes heatRise {{
   from {{ opacity: 0; transform: scale(.3); transform-box: fill-box; transform-origin: center; }}
   to   {{ opacity: 1; transform: scale(1); transform-box: fill-box; transform-origin: center; }}
 }}
-[data-heat-cell] {{
+.is-in [data-heat-cell] {{
   animation: heatRise .5s cubic-bezier(.22, .7, .3, 1) both;
   animation-delay: var(--d, 0ms);
 }}
@@ -1504,7 +1512,9 @@ html.no-motion [data-heat-cell] {{ animation: none; opacity: 1; }}
   transform-origin: center;
   transition: opacity .7s ease, transform .7s cubic-bezier(.22, .7, .3, 1);
 }}
-[data-reveal]:not(.is-in) .radar {{ opacity: 0; transform: scale(.9); }}
+/* 以下三处的「隐藏」也都挂在 html.anim-ready 上：
+   脚本没跑时它们是普通可见内容，不会出现空白区块。 */
+html.anim-ready [data-reveal]:not(.is-in) .radar {{ opacity: 0; transform: scale(.9); }}
 
 /* --- 折线：描边自左向右画出来 --- */
 svg.linechart path {{
@@ -1518,11 +1528,11 @@ svg.linechart circle {{ opacity: 0; transition: opacity .45s ease .5s; }}
 
 /* --- 时间线：节点依次亮起 --- */
 .tl-node {{ transition: opacity .5s ease; transition-delay: var(--d, 0ms); }}
-[data-reveal]:not(.is-in) .tl-node {{ opacity: 0; }}
+html.anim-ready [data-reveal]:not(.is-in) .tl-node {{ opacity: 0; }}
 
 /* --- 词云：词逐个浮现 --- */
 svg.wordcloud text {{ transition: opacity .6s ease; transition-delay: var(--d, 0ms); }}
-[data-reveal]:not(.is-in) svg.wordcloud text {{ opacity: 0; }}
+html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text {{ opacity: 0; }}
 
 /* --- 导航高亮平滑过渡 --- */
 .nav-link {{ transition: background .25s ease, color .25s ease, border-color .25s ease; }}
@@ -1637,13 +1647,16 @@ def _nav_html(items: list[tuple[str, str, str, str]], analysis: Analysis,
 </nav>"""
 
 
-def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
-             body: str) -> str:
-    """包一个带序号与锚点的区块。
+def _section(sid: str, index: int, total: int,
+             items: list[tuple[str, str, str, str]], body: str) -> str:
+    """包一个带页码、序号与锚点的区块（= 一页）。
 
-    ``data-reveal`` 只打在**内容卡片**上，**不打在标题上**。
-    标题一旦被藏起来而揭示又没触发，读者会看到「有内容没标题」的缺口，
-    比整块没动画难看得多；而且标题本身也不适合做位移动画。
+    ``data-reveal`` 只打在**内容卡片**上，**不打在标题上**：
+    标题一旦被藏起来而揭示又没触发，读者会看到「有内容没标题」的缺口。
+
+    ``.section`` 就是「一页」：``min-height: 100vh`` + ``scroll-snap-align``，
+    由 CSS 的滚动吸附实现一页一页翻。内容多到超过一屏的页会自然变高
+    （加 ``is-tall``），不为了塞进一屏而牺牲可读性。
     """
     entry = next((it for it in items if it[0] == sid), None)
     title = entry[2] if entry else sid
@@ -1652,6 +1665,7 @@ def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
     return f"""
 <section class="section" id="{sid}">
   <div class="section-head">
+    <p class="page-mark"><b>{index:02d}</b><span>/ {total:02d}</span></p>
     <h2><span class="section-num">{index:02d}</span>{esc(title)}</h2>
     {desc_html}
   </div>
@@ -1705,10 +1719,10 @@ _SPY_SCRIPT = """
     }
     if (!best) return;
     links.forEach(function (a) { a.classList.toggle('is-active', a === byId[best]); });
+    // 侧栏里当前项若被挤出可视区，轻轻滚一下（无移动端适配，只此一处）
     var active = byId[best];
-    // 移动端把当前项滚进标签栏视野
-    if (active && active.scrollIntoView && window.innerWidth < 940) {
-      active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    if (active && active.scrollIntoView) {
+      active.scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -1775,7 +1789,7 @@ _SPY_SCRIPT = """
   }
 
   function showNow(el) {
-    if (el.classList.contains('is-in')) return;
+    if (!el || el.classList.contains('is-in')) return;
     // 先清掉内联 opacity（部分区块用它参与卡片错峰），再打标记触发过渡
     el.style.removeProperty('opacity');
     el.classList.add('is-in');
@@ -1795,58 +1809,122 @@ _SPY_SCRIPT = """
     runCounts(el);
   }
 
-  // 揭示逻辑刻意不依赖 IntersectionObserver：
-  // 快速滚动、无头浏览器、部分内置浏览器里它会漏触发，
-  // 而漏触发的后果是内容永久不可见——代价太大。
-  // 这里用最朴素的「算一下在不在视口里」，滚动/缩放/加载后都跑一遍。
-  var ticking = false;
+  function showAll() {
+    for (var i = 0; i < revealTargets.length; i++) showNow(revealTargets[i]);
+  }
+
+  /* ------------------------------------------------------------------
+     揭示逻辑：绝不能依赖「滚动事件一定会触发」。
+     之前就是栽在这里——元素初始隐藏，而滚动回调在快速滚动 /
+     滚动吸附跳转 / 无头浏览器里可能不触发，于是内容永久空白
+     （「关键节点」整页空白就是这么来的）。
+
+     现在三道保险，任何一道生效内容都不会缺：
+       1. 只要还有元素没揭示，就用 requestAnimationFrame 持续检查；
+       2. 若干次看门狗定时器，到点仍未揭示的直接全部显示；
+       3. MutationObserver 监听 DOM 变化，兜住动态插入的内容。
+     宁可少一个动画，也绝不让读者看到空白。
+     ------------------------------------------------------------------ */
 
   function inViewport(el) {
     var r = el.getBoundingClientRect();
     var vh = window.innerHeight || document.documentElement.clientHeight;
-    return r.top < vh - 40 && r.bottom > -40;
+    return r.top < vh - 30 && r.bottom > -30;
   }
 
-  function refresh() {
-    ticking = false;
+  function pending() {
+    for (var i = 0; i < revealTargets.length; i++) {
+      if (!revealTargets[i].classList.contains('is-in')) return true;
+    }
+    return false;
+  }
+
+  // 每帧检查：直到全部揭示为止。比监听 scroll 可靠得多，
+  // 因为滚动吸附跳转、锚点跳转、键盘翻页都会自然被下一帧捕捉到。
+  function tick() {
+    var left = false;
     for (var i = 0; i < revealTargets.length; i++) {
       var el = revealTargets[i];
       if (el.classList.contains('is-in')) continue;
       if (inViewport(el)) showNow(el);
+      else left = true;
     }
     measureLines();
-  }
-
-  function requestRefresh() {
-    if (ticking) return;
-    ticking = true;
-    if (window.requestAnimationFrame) window.requestAnimationFrame(refresh);
-    else window.setTimeout(refresh, 16);
+    if (left) {
+      if (window.requestAnimationFrame) window.requestAnimationFrame(tick);
+      else window.setTimeout(tick, 60);
+    }
   }
 
   measureLines();
-  refresh();   // 首屏立刻处理
-
-  window.addEventListener('scroll', requestRefresh, { passive: true });
-  window.addEventListener('resize', requestRefresh);
-  window.addEventListener('load', requestRefresh);
-
-  // 仪表盘在首屏，一定可见：一进页面就滚动起来
+  tick();                       // 首屏立刻处理
   if (gaugeEl) runCounts(gaugeEl);
 
-  // 兜底：布局变化后再补两次
-  window.setTimeout(refresh, 180);
-  window.setTimeout(refresh, 700);
-
-  // 最后一道保险：无论前面发生什么，1.5 秒后把还没揭示的一律显示出来。
-  // 宁可少一个动画，也不能让读者看到缺口。
-  // （标题不参与入场，所以「有内容没标题」这种缺口不会出现。）
+  // 看门狗：无论发生什么，到点就把还在隐藏的一律显示出来。
+  // 第一次很快（0.6s），保证「切到某页发现是空的」不会发生。
   window.setTimeout(function () {
-    for (var i = 0; i < revealTargets.length; i++) {
-      var el = revealTargets[i];
-      if (!el.classList.contains('is-in')) el.classList.add('is-in');
+    for (var i = 0; i < revealTargets.length; i++) showNow(revealTargets[i]);
+  }, 600);
+  window.setTimeout(showAll, 2000);
+
+  // 滚动 / 缩放 / 加载完成后再补跑一次（有则更快，无则无害）
+  window.addEventListener('scroll', function () {
+    if (pending()) tick();
+  }, { passive: true });
+  window.addEventListener('resize', function () { tick(); });
+  window.addEventListener('load', function () { tick(); });
+
+  // DOM 变化（例如字体或图片撑开布局）后重新检查
+  if (window.MutationObserver) {
+    var mo = new MutationObserver(function () {
+      revealTargets = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+      if (pending()) tick();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+  }
+
+  /* ------------------------------------------------------------------
+     一页一页翻页：方向键 / PageUp / PageDown / 空格 / Home / End。
+     滚动吸附已经能处理鼠标滚轮，键盘补齐更顺手的操作。
+     目标区块取「当前视口顶部之下最近的一页」。
+     ------------------------------------------------------------------ */
+  var pages = Array.prototype.slice.call(document.querySelectorAll('.section, .comfort, footer'));
+
+  function currentIndex() {
+    var y = window.scrollY + 4;
+    for (var i = pages.length - 1; i >= 0; i--) {
+      if (pages[i].offsetTop <= y) return i;
     }
-  }, 1500);
+    return 0;
+  }
+
+  function goTo(i) {
+    if (i < 0) i = 0;
+    if (i >= pages.length) i = pages.length - 1;
+    var el = pages[i];
+    if (!el) return;
+    window.scrollTo({ top: el.offsetTop, behavior: reduce ? 'auto' : 'smooth' });
+    // 翻页后立刻检查一次，避免「切过去了但内容还没揭示」
+    window.setTimeout(tick, 30);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    // 输入框里不劫持按键
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    var k = e.key;
+    if (k === 'ArrowDown' || k === 'PageDown' || k === ' ') {
+      e.preventDefault(); goTo(currentIndex() + 1);
+    } else if (k === 'ArrowUp' || k === 'PageUp') {
+      e.preventDefault(); goTo(currentIndex() - 1);
+    } else if (k === 'Home') {
+      e.preventDefault(); goTo(0);
+    } else if (k === 'End') {
+      e.preventDefault(); goTo(pages.length - 1);
+    }
+  });
 })();
 </script>
 """
@@ -1877,7 +1955,7 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
     order = {sid: i + 1 for i, (sid, *_rest) in enumerate(nav)}
 
     def sec(sid: str, body: str) -> str:
-        return _section(sid, order[sid], nav, body)
+        return _section(sid, order[sid], len(nav), nav, body)
 
     quant_body = f"""
     <p class="tiny faint" style="margin-bottom:12px">
@@ -1954,7 +2032,7 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=1240, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <meta name="robots" content="noindex, nofollow">
 <title>TA 到底爱不爱我 · {esc(analysis.peer)} × {esc(analysis.me)} · {result.total} 分</title>

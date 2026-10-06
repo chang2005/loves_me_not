@@ -202,7 +202,7 @@ def render_heatmap(footprint: Footprint, weeks_limit: int | None = None) -> str:
     longest = max(days.values(), key=lambda d: d.chat_minutes)
 
     return f"""
-<div class="heat-wrap">
+<div class="heat-wrap" data-reveal>
   <div class="heat-scroll">
     <svg viewBox="0 0 {svg_w} {svg_h}" width="{svg_w}" height="{svg_h}"
          class="heatmap" role="img"
