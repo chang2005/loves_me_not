@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 loves-me-not contributors
+Copyright (c) 2026 Chang Yuhao
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,3 +40,24 @@ SOFTWARE.
   去分享、去质问，请先想清楚他会是什么感受。
 
 用它之前，请先对得起聊天记录另一端的那个人。
+
+---
+
+## Before you use this software, read this
+
+This is not a legal term. It is one thing this project hopes you will agree to.
+
+This tool will show you statistics about another person. Those numbers come from
+real conversations between you — including the moments they stayed up replying,
+and the moments they took a long time to answer with a single "mm".
+
+Please remember:
+
+- Someone replying slowly may simply be bad with words, may have had a long day,
+  or may not have seen it yet. **Statistics cannot see any of that.**
+- A report should not make any decision for you. It points at "what might be worth
+  talking about", not at a verdict on whether they love you.
+- There is a real person on the other end of that chat log. If you are going to
+  analyze it, share it or confront them with it, think first about how they will feel.
+
+Before you use it, be decent to the person on the other end of the chat log.
