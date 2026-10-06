@@ -497,6 +497,13 @@ def render_verdict(result: ScoreResult, analysis: Analysis, *, assumed: bool = F
       <h1 style="color:{result.tier.color}">{esc(result.tier.title)}</h1>
       <p class="one-liner">{esc(result.tier.one_liner)}</p>
       <p class="tiny faint">
+        这个分数是<b>综合分</b>：八维模型
+        {f"{result.base_score:.0f} 分" if result.base_score is not None else "样本不足"} × 60%
+        ＋ 五大量化指标
+        {f"{result.quant_score:.0f} 分" if result.quant_score is not None else "样本不足"} × 40%，
+        再按样本量收缩。两部分的完整分账见下方「分数是怎么算出来的」。
+      </p>
+      <p class="tiny faint">
         判断的是 <b>{esc(analysis.peer)}</b> 对 <b>{esc(analysis.me)}</b> 的投入度·
         共解析 {analysis.total_real} 条有效消息·
         区间 {esc(_fmt_span(analysis))}·
