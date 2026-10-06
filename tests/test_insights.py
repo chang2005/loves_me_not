@@ -431,6 +431,39 @@ class TestReportIntegration(unittest.TestCase):
         self.assertNotIn("gauge-needle", self.html)
         self.assertNotIn("_arc_path", self.html)
 
+    def test_gauge_ring_geometry_matches_score(self):
+        """进度环的 dasharray 长度必须与分数成比例，且不超出圆周长。"""
+        import math as _math
+        import re as _re
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        g = report.render_gauge(result.total, "#b4576f", "测试")
+        m = _re.search(r'stroke-dasharray="([\d.]+) ([\d.]+)"', g)
+        self.assertIsNotNone(m, "没找到 dasharray")
+        filled, rest = float(m.group(1)), float(m.group(2))
+        r = report._RING["size"] / 2 - report._RING["gap"]
+        circumference = 2 * _math.pi * r
+        self.assertAlmostEqual(filled + rest, circumference, delta=0.5)
+        expected = circumference * result.total / 100.0
+        self.assertAlmostEqual(filled, expected, delta=0.5)
+
+    def test_gauge_handles_extremes(self):
+        """0 分与 100 分都不能出现负长度或超出周长。"""
+        import re as _re
+        for score in (0, 100):
+            g = report.render_gauge(score, "#b4576f", "x")
+            m = _re.search(r'stroke-dasharray="([\d.]+) ([\d.]+)"', g)
+            filled, rest = float(m.group(1)), float(m.group(2))
+            self.assertGreaterEqual(filled, 0.0)
+            self.assertGreaterEqual(rest, 0.0)
+
+    def test_colour_has_single_source(self):
+        """颜色只能有一份定义：report 必须复用 visuals 的调色板。"""
+        self.assertIs(report.PALETTE, visuals.PALETTE)
+        for key in ("peer", "me", "accent", "ink", "line", "nav_bg"):
+            self.assertIn(key, visuals.PALETTE)
+
     def test_json_contains_new_data(self):
         payload = json.loads(report.build_json(self.analysis, self.result))
         for key in ("quantifiers", "footprint", "timeline", "topics", "persona", "blend"):
