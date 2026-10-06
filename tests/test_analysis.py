@@ -382,15 +382,94 @@ class TestReport(unittest.TestCase):
     def test_no_external_requests(self):
         """单文件必须自包含：不能有任何 http(s) 引用、外链、CDN。
 
-        允许**一个内联** ``<script>``（章节导航的滚动高亮），
-        但它不得含任何 URL，也不得用 ``src=`` 引外部文件。
+        允许**内联** ``<script>``（章节导航高亮 + 入场动效，以及提前
+        判断是否需要禁用动效的一小段），但它们不得含任何 URL，
+        也不得用 ``src=`` 引外部文件。
         """
         low = self.html.lower()
         for bad in ("http://", "https://", "src=", "@import", "cdn."):
             self.assertNotIn(bad, low, f"报告里出现了外部引用：{bad}")
-        # 脚本只允许内联且只有一个
-        self.assertEqual(low.count("<script"), 1)
+        # 脚本必须全部内联，且数量可控（不随数据规模增长）
+        self.assertLessEqual(low.count("<script"), 3, "内联脚本数量异常")
         self.assertIn("<script>", low)
+        self.assertNotIn("<script src", low)
+
+    def test_no_js_still_shows_content(self):
+        """禁用 JS 时内容必须可见（不能因为动效初始 opacity:0 而白屏）。"""
+        self.assertIn("<noscript>", self.html)
+        self.assertIn("[data-reveal]", self.html)
+        # noscript 里的兜底样式必须把透明度还原
+        noscript = self.html.split("<noscript>")[1].split("</noscript>")[0]
+        self.assertIn("opacity: 1", noscript)
+
+    def test_reduced_motion_supported(self):
+        """必须尊重 prefers-reduced-motion。"""
+        self.assertIn("prefers-reduced-motion", self.html)
+
+    def test_inline_script_has_valid_syntax(self):
+        """内联脚本必须语法正确。
+
+        没有浏览器时用 Node 的 ``--check`` 校验；两个 Node 都找不到就跳过
+        （宁可跳过，也不写一个永远通过的假测试）。
+        """
+        import re as _re
+        import shutil
+        import subprocess
+        import tempfile
+
+        node = shutil.which("node")
+        if not node:
+            candidates = [
+                Path(r"C:\Users\CYH\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\node\bin\node.exe"),
+            ]
+            node = next((str(c) for c in candidates if c.exists()), None)
+        if not node:
+            self.skipTest("环境里没有 node，无法校验 JS 语法")
+
+        # 把 <script>…</script> 里的内容逐段抽出来校验
+        blocks = _re.findall(r"<script>(.*?)</script>", self.html, _re.S)
+        self.assertTrue(blocks, "报告里应当有内联脚本")
+        for i, code in enumerate(blocks):
+            with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
+                                             encoding="utf-8") as fh:
+                fh.write(code)
+                path = fh.name
+            proc = subprocess.run([node, "--check", path],
+                                  capture_output=True, text=True)
+            Path(path).unlink(missing_ok=True)
+            self.assertEqual(proc.returncode, 0,
+                             f"第 {i + 1} 段内联脚本语法错误：{proc.stderr[:400]}")
+
+    def test_reveal_never_hides_content_without_js(self):
+        """入场动画的隐藏状态必须挂在 .anim-ready 上，而不是默认状态。
+
+        做法：把 ``<style>`` 里的规则逐条解析出来，只看**选择器恰好是**
+        ``[data-reveal]`` 的规则——带 ``html.anim-ready`` 前缀的、
+        以及后代选择器（如 ``[data-reveal]:not(.is-in) .radar``）都不算。
+        """
+        import re as _re
+
+        styles = "".join(_re.findall(r"<style>(.*?)</style>", self.html, _re.S))
+        styles = _re.sub(r"/\*.*?\*/", "", styles, flags=_re.S)   # 去掉 CSS 注释
+
+        bare_rules: list[str] = []
+        for selector, body in _re.findall(r"([^{}]+)\{([^{}]*)\}", styles):
+            sel = selector.strip()
+            if sel == "[data-reveal]":
+                bare_rules.append(body)
+
+        self.assertTrue(bare_rules, "没找到 [data-reveal] 的基础规则")
+        for body in bare_rules:
+            self.assertNotIn(
+                "opacity: 0", body.replace(" ", "").replace("opacity:0", "opacity: 0"),
+                "默认状态下 [data-reveal] 不能是透明的（会导致无 JS 白屏）",
+            )
+        self.assertIn("html.anim-ready [data-reveal]", styles)
+
+    def test_reveal_has_last_resort_timeout(self):
+        """主脚本必须有最终兜底：无论如何都要把内容显示出来。"""
+        self.assertIn("3000", self.html)   # 3 秒兜底计时器
+        self.assertIn("is-in", self.html)
 
     def test_has_charset_and_viewport(self):
         self.assertIn('<meta charset="utf-8">', self.html)

@@ -7,24 +7,24 @@
 <meta name="robots" content="noindex, nofollow">
 <title>TA 到底爱不爱我 · 阿澈 × 我 · 47 分</title>
 <style>:root {
-  --bg: #f6f4f1;
+  --bg: #faf7fb;
   --surface: #ffffff;
-  --surface-alt: #faf8f6;
-  --ink: #2a2731;
-  --ink-soft: #5f5966;
-  --ink-faint: #928c98;
-  --line: #e7e2df;
-  --line-soft: #f0ece8;
-  --peer: #b4576f;
-  --peer-soft: #f3e4e8;
-  --me: #4f7fa0;
-  --me-soft: #e5edf4;
-  --accent: #b07d34;
-  --accent-soft: #f6eedd;
-  --good: #4f8a6b;
-  --warn: #b5793a;
-  --nav-bg: #221f28;
-  --nav-ink: #cfc9d4;
+  --surface-alt: #f7f3f8;
+  --ink: #241f2b;
+  --ink-soft: #5c5468;
+  --ink-faint: #918aa0;
+  --line: #ece5ef;
+  --line-soft: #f4eff6;
+  --peer: #e1487f;
+  --peer-soft: #fde7f0;
+  --me: #8a4fd8;
+  --me-soft: #f0e8fd;
+  --accent: #f2764a;
+  --accent-soft: #fdeee7;
+  --good: #2fa37a;
+  --warn: #e08a2e;
+  --nav-bg: #1d1723;
+  --nav-ink: #cabfd4;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgba(42, 39, 49, .04), 0 8px 24px -12px rgba(42, 39, 49, .14);
@@ -478,7 +478,189 @@ footer b { color: var(--ink-soft); }
   }
   .section { break-inside: avoid-page; }
 }
+
+/* =====================================================================
+   动效系统
+   ---------------------------------------------------------------------
+   原则：入场有节制、交互有反馈、随时可关闭。
+
+   隐藏内容靠 ``html.anim-ready`` 这个类，而不是默认状态：
+   脚本启动时给 <html> 加 .anim-ready，CSS 才把元素藏起来等入场。
+   脚本没跑或被拦掉时，页面就是一份「没有动画的正常文档」。
+   JS 不可用会白屏，是这一层最贵的一类 bug，所以宁可少一个动画。
+   ===================================================================== */
+
+/* --- 入场：淡入 + 轻微上浮 ---
+   关键设计：默认可见。
+   脚本启动时给 ``<html>`` 加 ``.anim-ready``，下面第一条规则才生效、
+   元素才被藏起来等着入场。这样脚本没跑、跑挂、或被拦掉时，
+   页面永远是「没有动画的正常文档」，而不是一片空白——
+   「内容因入场动画永久隐形」是这个项目里最贵的一类 bug。 */
+html.anim-ready [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}
+[data-reveal] {
+  transition:
+    opacity .6s cubic-bezier(.22, .7, .3, 1),
+    transform .6s cubic-bezier(.22, .7, .3, 1);
+  transition-delay: var(--d, 0ms);
+}
+[data-reveal].is-in { opacity: 1; transform: none; }
+/* 减少动效时不做入场，元素始终可见 */
+html.no-motion [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+html.no-motion [data-heat-cell] { animation: none; opacity: 1; }
+
+/* --- 进度条：宽度生长由脚本在揭示时驱动（见 _SPY_SCRIPT）。
+       这里只给过渡曲线；没有脚本时宽度就是最终值，不会空白。 --- */
+.bar-fill, .mini-fill, .persona-bar > div, .q-bar > div {
+  transform-origin: left center;
+  transition: width .9s cubic-bezier(.22, .7, .3, 1);
+}
+
+/* --- 卡片浮起 --- */
+.card, .chart-card, .dim-card, .stat, .q-item, .persona-card,
+.ev, .tl-body, .heat-wrap, .cloud-wrap, .win, .bd {
+  transition: box-shadow .3s ease, transform .3s cubic-bezier(.22, .7, .3, 1);
+}
+@media (hover: hover) {
+  .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
+  .tl-body:hover, .win:hover, .dim-card:hover {
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 2px 4px rgba(36, 31, 43, .05),
+                0 16px 34px -16px rgba(138, 79, 216, .28);
+  }
+}
+
+/* --- 热力图格子：像涟漪一样铺开 --- */
+@keyframes heatRise {
+  from { opacity: 0; transform: scale(.3); transform-box: fill-box; transform-origin: center; }
+  to   { opacity: 1; transform: scale(1); transform-box: fill-box; transform-origin: center; }
+}
+[data-heat-cell] {
+  animation: heatRise .5s cubic-bezier(.22, .7, .3, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* --- 环形仪表盘：入场时轻微放大 --- */
+@keyframes gaugeIn {
+  from { opacity: 0; transform: scale(.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.gauge-wrap.is-in svg.gauge { animation: gaugeIn .7s cubic-bezier(.22, .7, .3, 1) both; }
+
+/* --- 雷达图：整块淡入 + 从中心展开 --- */
+.radar {
+  transform-origin: center;
+  transition: opacity .7s ease, transform .7s cubic-bezier(.22, .7, .3, 1);
+}
+[data-reveal]:not(.is-in) .radar { opacity: 0; transform: scale(.9); }
+
+/* --- 折线：描边自左向右画出来 --- */
+svg.linechart path {
+  stroke-dasharray: var(--len, 2400);
+  stroke-dashoffset: var(--len, 2400);
+}
+.is-in svg.linechart path { animation: drawLine 1.25s cubic-bezier(.35, .7, .3, 1) forwards; }
+@keyframes drawLine { to { stroke-dashoffset: 0; } }
+svg.linechart circle { opacity: 0; transition: opacity .45s ease .5s; }
+.is-in svg.linechart circle { opacity: 1; }
+
+/* --- 时间线：节点依次亮起 --- */
+.tl-node { transition: opacity .5s ease; transition-delay: var(--d, 0ms); }
+[data-reveal]:not(.is-in) .tl-node { opacity: 0; }
+
+/* --- 词云：词逐个浮现 --- */
+svg.wordcloud text { transition: opacity .6s ease; transition-delay: var(--d, 0ms); }
+[data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
+
+/* --- 导航高亮平滑过渡 --- */
+.nav-link { transition: background .25s ease, color .25s ease, border-color .25s ease; }
+
+/* --- 数字滚动标记 --- */
+[data-count] { font-variant-numeric: tabular-nums; }
+
+/* --- 尊重「减少动态效果」 --- */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  [data-heat-cell] { animation: none !important; opacity: 1 !important; }
+  .gauge-wrap.is-in svg.gauge { animation: none !important; }
+  svg.linechart path {
+    stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important;
+  }
+  svg.linechart circle, svg.wordcloud text, .tl-node {
+    opacity: 1 !important; transition: none !important;
+  }
+  .radar { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .bar-fill, .mini-fill, .persona-bar > div, .q-bar > div { transition: none !important; }
+  .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
+  .tl-body:hover, .win:hover, .dim-card:hover { transform: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* =====================================================================
+   个性化收尾文案（insight）
+   ===================================================================== */
+.insight {
+  margin-top: 20px; padding: 18px 17px; border-radius: 16px;
+  background: linear-gradient(140deg, #fdf4f8 0%, #f6f0fd 55%, #fdf1ea 100%);
+  border: 1px solid #f0e4ee;
+  box-shadow: 0 2px 6px rgba(138, 79, 216, .05),
+              0 18px 40px -22px rgba(225, 72, 127, .35);
+}
+.insight-head { display: flex; align-items: center; gap: 9px; margin-bottom: 11px; flex-wrap: wrap; }
+.insight-badge {
+  font-size: .68rem; font-weight: 700; letter-spacing: .05em;
+  color: #fff; padding: 3px 11px; border-radius: 99px;
+  background: linear-gradient(100deg, var(--me), var(--peer) 62%, var(--accent));
+}
+.insight-from { color: #8b7f97; }
+.insight-lead {
+  font-size: 1rem; font-weight: 620; color: #3b3342; line-height: 1.72;
+  margin: 0 0 5px; letter-spacing: -.01em;
+}
+.insight-support { color: #8b7f97; margin: 0 0 11px; }
+.insight-closing {
+  font-size: .925rem; color: #4e4557; line-height: 1.85; margin: 0;
+  padding-top: 11px; border-top: 1px dashed #ece0ee;
+}
+.insight-based { color: #a396ae; margin: 9px 0 0; }
+
+/* --- 渐变文字（仅用于极少数强调，不用于正文） --- */
+.grad-text {
+  background: linear-gradient(100deg, var(--me), var(--peer) 55%, var(--accent));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: var(--peer);
+}
 </style>
+<noscript><style>
+  /* 禁用 JS 时没有观察器来触发入场，必须让内容直接可见 */
+  [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  [data-heat-cell] { animation: none !important; opacity: 1 !important; }
+  svg.linechart path { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+  svg.linechart circle, svg.wordcloud text, .tl-node { opacity: 1 !important; }
+  .radar { opacity: 1 !important; transform: none !important; }
+</style></noscript>
+<script>
+  /* 启用入场动效之前先做两项判断，避免出现「先隐形再闪现」或白屏：
+     1. 减少动效 / 没有必需 API  -> 加 .no-motion，不做任何动画；
+     2. 否则加 .anim-ready，CSS 才把 [data-reveal] 藏起来等待入场。
+     页面底部的主脚本与此处各管一段，互不依赖。 */
+  (function () {
+    var d = document.documentElement;
+    var ok = 'querySelectorAll' in document
+      && window.addEventListener
+      && window.getComputedStyle
+      && (window.requestAnimationFrame || window.setTimeout);
+    var noMotion = !ok
+      || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (noMotion) {
+      d.classList.add('no-motion');
+      return;
+    }
+    d.classList.add('anim-ready');
+  })();
+</script>
 </head>
 <body>
 <div class="layout">
@@ -503,7 +685,7 @@ footer b { color: var(--ink-soft); }
 
     
 <section class="section" id="verdict">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">01</span>结论</h2>
     <p class="section-desc">0–100 情感投入指数与等级判断</p>
   </div>
@@ -517,14 +699,14 @@ footer b { color: var(--ink-soft); }
      aria-label="情感投入指数 47 分，满分 100 分">
   <defs>
     <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#8a9bb8" stop-opacity="0.78"/>
-      <stop offset="100%" stop-color="#8a9bb8"/>
+      <stop offset="0%" stop-color="#a855c7" stop-opacity="0.78"/>
+      <stop offset="100%" stop-color="#a855c7"/>
     </linearGradient>
   </defs>
 
   <!-- 底环 -->
   <circle cx="130.0" cy="130.0" r="104.0" fill="none"
-          stroke="#e7e2df" stroke-width="18.0"/>
+          stroke="#ece5ef" stroke-width="18.0"/>
   <!-- 进度环：从 12 点方向顺时针 -->
   <circle cx="130.0" cy="130.0" r="104.0" fill="none"
           stroke="url(#gaugeGrad)" stroke-width="18.0" stroke-linecap="round"
@@ -533,14 +715,14 @@ footer b { color: var(--ink-soft); }
 
   <text x="130.0" y="128.0" text-anchor="middle"
         dominant-baseline="middle" class="gauge-num"
-        fill="#2a2731">47</text>
+        fill="#241f2b" data-count="47">47</text>
   <text x="130.0" y="170.0" text-anchor="middle"
         dominant-baseline="middle" class="gauge-denom"
-        fill="#928c98">/ 100</text>
+        fill="#918aa0">/ 100</text>
 </svg>
-<p class="gauge-label" style="color:#8a9bb8">已经在变淡</p></div>
+<p class="gauge-label" style="color:#a855c7">已经在变淡</p></div>
     <div class="verdict-text">
-      <h1 style="color:#8a9bb8">已经在变淡</h1>
+      <h1 style="color:#a855c7">已经在变淡</h1>
       <p class="one-liner">多项指标都偏向单方面：你在推进，他在应付。</p>
       <p class="tiny faint">
         这个分数是<b>综合分</b>：八维模型
@@ -566,7 +748,7 @@ footer b { color: var(--ink-soft); }
       
     </div>
   </div>
-  <div class="advice" style="border-color:#8a9bb855">
+  <div class="advice" style="border-color:#a855c755">
     <p>这不是你的错，也不是你不值得。但你值得一个会主动找你的人。</p>
   </div>
   <div class="disclaimer-top">本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。</div>
@@ -574,7 +756,7 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="quantifiers">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">02</span>量化指标</h2>
     <p class="section-desc">回复速度 · 消息频率 · 深夜 · 破冰 · 收尾</p>
   </div>
@@ -585,22 +767,22 @@ footer b { color: var(--ink-soft); }
     </p>
     
 <div class="quant-wrap">
-  <div class="quant-head" style="border-color:#7d8aa355"><strong style="color:#7d8aa3">综合情感倾向：31 / 100</strong><span>TA 的行为信号整体偏弱：最强的一项是「打破僵局次数」（3 / 3 次），最弱的一项是「回复速度」（中位 3.0 小时）。</span></div>
+  <div class="quant-head" style="border-color:#7b6ba855"><strong style="color:#7b6ba8">综合情感倾向：31 / 100</strong><span>TA 的行为信号整体偏弱：最强的一项是「打破僵局次数」（3 / 3 次），最弱的一项是「回复速度」（中位 3.0 小时）。</span></div>
   <div class="quant-list">
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">回复速度</span>
         <span class="q-value">中位 3.0 小时</span>
         <span class="q-weight">权重 40% · 贡献 1.8</span>
       </div>
-      <div class="q-bar"><div style="width:5%;background:#b4576f"></div></div>
+      <div class="q-bar"><div style="width:5%;background:#e1487f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：TA 每次回复与上一条对方消息的时间差（仅统计 ≤24 小时的间隔），取中位数；映射曲线：中位 5 分钟 ≈ 50 分，越快越高<br>
         <b>来源</b>：每条消息的时间戳与说话人
         <br><b>补充</b>：基于 12 次回复 · 均值 5.4 小时 · 5 分钟内回复率 25%
       </p>
     </div>
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">每 5 分钟发消息次数</span>
         <span class="q-value faint">平均 1.1 条 / 5 分钟</span>
@@ -613,7 +795,7 @@ footer b { color: var(--ink-soft); }
         <br><b>补充</b>：共 15 个活跃窗口 · 峰值 2 条（2023-11-05 22:15） · 消息少于 20 条，不参与打分
       </p>
     </div>
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">深夜发消息次数</span>
         <span class="q-value faint">2 条</span>
@@ -626,26 +808,26 @@ footer b { color: var(--ink-soft); }
         <br><b>补充</b>：占 TA 全部消息的 12% · 消息少于 40 条，不参与打分
       </p>
     </div>
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">打破僵局次数</span>
         <span class="q-value">3 / 3 次</span>
         <span class="q-weight">权重 33% · 贡献 25.0</span>
       </div>
-      <div class="q-bar"><div style="width:75%;background:#b4576f"></div></div>
+      <div class="q-bar"><div style="width:75%;background:#e1487f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：沉默 ≥24 小时后，下一段对话的第一条消息由谁发出；统计 TA 破冰次数 ÷ 总破冰次数。理想值是双方各半（50% 得满分），全由一方承担则得分下降<br>
         <b>来源</b>：会话分段（30 分钟无消息即断开）+ 每条消息的时间戳与说话人
         <br><b>补充</b>：共 3 次 ≥24 小时的沉默 · 最长一次 1.5 天，由阿澈打破
       </p>
     </div>
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">最后发言次数</span>
         <span class="q-value">1 / 12 段</span>
         <span class="q-weight">权重 27% · 贡献 4.4</span>
       </div>
-      <div class="q-bar"><div style="width:17%;background:#b4576f"></div></div>
+      <div class="q-bar"><div style="width:17%;background:#e1487f"></div></div>
       <p class="tiny faint q-formula">
         <b>口径</b>：每段对话最后一条消息的归属；TA 占 50% 最均衡，越偏离 50%（无论谁多）说明收尾越固定在一方<br>
         <b>来源</b>：会话分段（30 分钟无消息即结束）+ 每条消息的说话人
@@ -661,7 +843,7 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="balance">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">03</span>双方投入度与关键数据</h2>
     <p class="section-desc">两个人的投入对比，以及一眼能看完的数字</p>
   </div>
@@ -670,22 +852,22 @@ footer b { color: var(--ink-soft); }
       <h3 style="font-size:.95rem;margin-bottom:10px">双方的投入度</h3>
       <div class="bars">
       <div class="bar-row">
-        <div class="bar-head"><span class="who" style="color:#b4576f">阿澈</span>
-          <span class="bar-val" style="color:#b4576f">53</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:52.8%;background:#b4576f"></div></div>
+        <div class="bar-head"><span class="who" style="color:#e1487f">阿澈</span>
+          <span class="bar-val" style="color:#e1487f">53</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:52.8%;background:#e1487f"></div></div>
       </div>
       <div class="bar-row">
-        <div class="bar-head"><span class="who" style="color:#4f7fa0">我</span>
-          <span class="bar-val" style="color:#4f7fa0">48</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:48.1%;background:#4f7fa0"></div></div>
+        <div class="bar-head"><span class="who" style="color:#8a4fd8">我</span>
+          <span class="bar-val" style="color:#8a4fd8">48</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:48.1%;background:#8a4fd8"></div></div>
       </div><p class="tiny faint">双向互动综合：50 / 100</p></div>
     </div>
     <h3 style="font-size:.95rem;margin:20px 0 10px">关键数据</h3>
-    <div class="stats"><div class="stat"><span class="stat-title">有效消息</span><span class="stat-value">33 条</span><span class="stat-sub">我 16 · 阿澈 17</span></div><div class="stat"><span class="stat-title">时间跨度</span><span class="stat-value">7 天</span><span class="stat-sub">首尾相差 7 天，其中 8 天有对话</span></div><div class="stat"><span class="stat-title">中位回复间隔</span><span class="stat-value">3.0 小时</span><span class="stat-sub">我：1 分钟</span></div><div class="stat"><span class="stat-title">TA 主动发起占比</span><span class="stat-value">100%</span><span class="stat-sub">共 9 轮对话</span></div><div class="stat"><span class="stat-title">实质性字数比</span><span class="stat-value">—</span><span class="stat-sub">实质性消息不足，未参与统计</span></div><div class="stat"><span class="stat-title">TA 收尾占比</span><span class="stat-value">11%</span><span class="stat-sub">对话最后一句话的归属</span></div><div class="stat"><span class="stat-title">TA 深夜消息占比</span><span class="stat-value">12%</span><span class="stat-sub">23:00–03:00</span></div><div class="stat"><span class="stat-title">TA 平均情绪分</span><span class="stat-value">—</span><span class="stat-sub">文本样本不足，未参与统计</span></div></div>
+    <div class="stats"><div class="stat" data-reveal><span class="stat-title">有效消息</span><span class="stat-value">33 条</span><span class="stat-sub">我 16 · 阿澈 17</span></div><div class="stat" data-reveal style="--d:70ms"><span class="stat-title">时间跨度</span><span class="stat-value">7 天</span><span class="stat-sub">首尾相差 7 天，其中 8 天有对话</span></div><div class="stat" data-reveal style="--d:140ms"><span class="stat-title">中位回复间隔</span><span class="stat-value">3.0 小时</span><span class="stat-sub">我：1 分钟</span></div><div class="stat" data-reveal style="--d:210ms"><span class="stat-title">TA 主动发起占比</span><span class="stat-value">100%</span><span class="stat-sub">共 9 轮对话</span></div><div class="stat" data-reveal style="--d:280ms"><span class="stat-title">实质性字数比</span><span class="stat-value">—</span><span class="stat-sub">实质性消息不足，未参与统计</span></div><div class="stat" data-reveal style="--d:350ms"><span class="stat-title">TA 收尾占比</span><span class="stat-value">11%</span><span class="stat-sub">对话最后一句话的归属</span></div><div class="stat" data-reveal style="--d:420ms"><span class="stat-title">TA 深夜消息占比</span><span class="stat-value">12%</span><span class="stat-sub">23:00–03:00</span></div><div class="stat" data-reveal style="--d:490ms"><span class="stat-title">TA 平均情绪分</span><span class="stat-value">—</span><span class="stat-sub">文本样本不足，未参与统计</span></div></div>
 </section>
     
 <section class="section" id="footprint">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">04</span>聊天足迹</h2>
     <p class="section-desc">跨度、最佳时段、活跃月份、最长一次与最长沉默</p>
   </div>
@@ -702,11 +884,11 @@ footer b { color: var(--ink-soft); }
     <p class="tiny faint">按小时统计消息条数，堆叠展示双方贡献</p>
     
 <svg viewBox="0 0 720 190" class="hourbars" role="img" aria-label="24 小时活跃度">
-  <rect x="34.0" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="62.2" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="90.3" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><rect x="681.8" y="14" width="28.2" height="146" fill="#b4576f" opacity="0.05"/><line x1="34" y1="14.0" x2="710" y2="14.0" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="62.7" x2="710" y2="62.7" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="111.3" x2="710" y2="111.3" stroke="#e7e2df" stroke-width="1"/><line x1="34" y1="160.0" x2="710" y2="160.0" stroke="#e7e2df" stroke-width="1"/><rect x="260.3" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>08:00 · 阿澈 1 条</title></rect><rect x="260.3" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>08:00 · 我 1 条</title></rect><rect x="288.5" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>09:00 · 阿澈 1 条</title></rect><rect x="288.5" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>09:00 · 我 1 条</title></rect><rect x="316.7" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>10:00 · 阿澈 1 条</title></rect><rect x="316.7" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>10:00 · 我 1 条</title></rect><rect x="344.8" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>11:00 · 阿澈 1 条</title></rect><rect x="344.8" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>11:00 · 我 1 条</title></rect><rect x="373.0" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>12:00 · 阿澈 1 条</title></rect><rect x="373.0" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>12:00 · 我 1 条</title></rect><rect x="429.3" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>14:00 · 阿澈 1 条</title></rect><rect x="429.3" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>14:00 · 我 1 条</title></rect><rect x="570.2" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>19:00 · 阿澈 1 条</title></rect><rect x="570.2" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>19:00 · 我 1 条</title></rect><rect x="598.3" y="143.8" width="26.2" height="16.2" fill="#b4576f" opacity="0.85"><title>20:00 · 阿澈 1 条</title></rect><rect x="598.3" y="127.6" width="26.2" height="16.2" fill="#4f7fa0" opacity="0.85"><title>20:00 · 我 1 条</title></rect><rect x="626.5" y="127.6" width="26.2" height="32.4" fill="#b4576f" opacity="0.85"><title>21:00 · 阿澈 2 条</title></rect><rect x="626.5" y="95.1" width="26.2" height="32.4" fill="#4f7fa0" opacity="0.85"><title>21:00 · 我 2 条</title></rect><rect x="654.7" y="78.9" width="26.2" height="81.1" fill="#b4576f" opacity="0.85"><title>22:00 · 阿澈 5 条</title></rect><rect x="654.7" y="14.0" width="26.2" height="64.9" fill="#4f7fa0" opacity="0.85"><title>22:00 · 我 4 条</title></rect><rect x="682.8" y="127.6" width="26.2" height="32.4" fill="#b4576f" opacity="0.85"><title>23:00 · 阿澈 2 条</title></rect><rect x="682.8" y="95.1" width="26.2" height="32.4" fill="#4f7fa0" opacity="0.85"><title>23:00 · 我 2 条</title></rect><text x="48.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">00</text><text x="132.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">03</text><text x="217.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">06</text><text x="301.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">09</text><text x="386.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">12</text><text x="470.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">15</text><text x="555.1" y="175" font-size="9" text-anchor="middle" fill="#928c98">18</text><text x="639.6" y="175" font-size="9" text-anchor="middle" fill="#928c98">21</text>
+  <rect x="34.0" y="14" width="28.2" height="146" fill="#e1487f" opacity="0.05"/><rect x="62.2" y="14" width="28.2" height="146" fill="#e1487f" opacity="0.05"/><rect x="90.3" y="14" width="28.2" height="146" fill="#e1487f" opacity="0.05"/><rect x="681.8" y="14" width="28.2" height="146" fill="#e1487f" opacity="0.05"/><line x1="34" y1="14.0" x2="710" y2="14.0" stroke="#ece5ef" stroke-width="1"/><line x1="34" y1="62.7" x2="710" y2="62.7" stroke="#ece5ef" stroke-width="1"/><line x1="34" y1="111.3" x2="710" y2="111.3" stroke="#ece5ef" stroke-width="1"/><line x1="34" y1="160.0" x2="710" y2="160.0" stroke="#ece5ef" stroke-width="1"/><rect x="260.3" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>08:00 · 阿澈 1 条</title></rect><rect x="260.3" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>08:00 · 我 1 条</title></rect><rect x="288.5" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>09:00 · 阿澈 1 条</title></rect><rect x="288.5" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>09:00 · 我 1 条</title></rect><rect x="316.7" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>10:00 · 阿澈 1 条</title></rect><rect x="316.7" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>10:00 · 我 1 条</title></rect><rect x="344.8" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>11:00 · 阿澈 1 条</title></rect><rect x="344.8" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>11:00 · 我 1 条</title></rect><rect x="373.0" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>12:00 · 阿澈 1 条</title></rect><rect x="373.0" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>12:00 · 我 1 条</title></rect><rect x="429.3" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>14:00 · 阿澈 1 条</title></rect><rect x="429.3" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>14:00 · 我 1 条</title></rect><rect x="570.2" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>19:00 · 阿澈 1 条</title></rect><rect x="570.2" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>19:00 · 我 1 条</title></rect><rect x="598.3" y="143.8" width="26.2" height="16.2" fill="#e1487f" opacity="0.85"><title>20:00 · 阿澈 1 条</title></rect><rect x="598.3" y="127.6" width="26.2" height="16.2" fill="#8a4fd8" opacity="0.85"><title>20:00 · 我 1 条</title></rect><rect x="626.5" y="127.6" width="26.2" height="32.4" fill="#e1487f" opacity="0.85"><title>21:00 · 阿澈 2 条</title></rect><rect x="626.5" y="95.1" width="26.2" height="32.4" fill="#8a4fd8" opacity="0.85"><title>21:00 · 我 2 条</title></rect><rect x="654.7" y="78.9" width="26.2" height="81.1" fill="#e1487f" opacity="0.85"><title>22:00 · 阿澈 5 条</title></rect><rect x="654.7" y="14.0" width="26.2" height="64.9" fill="#8a4fd8" opacity="0.85"><title>22:00 · 我 4 条</title></rect><rect x="682.8" y="127.6" width="26.2" height="32.4" fill="#e1487f" opacity="0.85"><title>23:00 · 阿澈 2 条</title></rect><rect x="682.8" y="95.1" width="26.2" height="32.4" fill="#8a4fd8" opacity="0.85"><title>23:00 · 我 2 条</title></rect><text x="48.1" y="175" font-size="9" text-anchor="middle" fill="#918aa0">00</text><text x="132.6" y="175" font-size="9" text-anchor="middle" fill="#918aa0">03</text><text x="217.1" y="175" font-size="9" text-anchor="middle" fill="#918aa0">06</text><text x="301.6" y="175" font-size="9" text-anchor="middle" fill="#918aa0">09</text><text x="386.1" y="175" font-size="9" text-anchor="middle" fill="#918aa0">12</text><text x="470.6" y="175" font-size="9" text-anchor="middle" fill="#918aa0">15</text><text x="555.1" y="175" font-size="9" text-anchor="middle" fill="#918aa0">18</text><text x="639.6" y="175" font-size="9" text-anchor="middle" fill="#918aa0">21</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#b4576f"></i>阿澈</span>
-  <span><i style="background:#4f7fa0"></i>我</span>
+  <span><i style="background:#e1487f"></i>阿澈</span>
+  <span><i style="background:#8a4fd8"></i>我</span>
   <span class="faint">淡色区域 = 深夜 23:00–03:00</span>
 </div>
   </div>
@@ -715,11 +897,11 @@ footer b { color: var(--ink-soft); }
     <p class="tiny faint">按月统计消息条数，已标出最多与最少的月份</p>
     
 <svg viewBox="0 0 720 200" class="monthbars" role="img" aria-label="月度消息量">
-  <rect x="35.5" y="88.7" width="673.0" height="77.3" fill="#b4576f" opacity="0.85"><title>2023-11 · 阿澈 17 条</title></rect><rect x="35.5" y="16.0" width="673.0" height="72.7" fill="#4f7fa0" opacity="0.85"><title>2023-11 · 我 16 条</title></rect><text x="372.0" y="182" font-size="9" text-anchor="middle" fill="#928c98">11月</text><text x="372.0" y="12" font-size="9" text-anchor="middle" fill="#b07d34">最多</text>
+  <rect x="35.5" y="88.7" width="673.0" height="77.3" fill="#e1487f" opacity="0.85"><title>2023-11 · 阿澈 17 条</title></rect><rect x="35.5" y="16.0" width="673.0" height="72.7" fill="#8a4fd8" opacity="0.85"><title>2023-11 · 我 16 条</title></rect><text x="372.0" y="182" font-size="9" text-anchor="middle" fill="#918aa0">11月</text><text x="372.0" y="12" font-size="9" text-anchor="middle" fill="#f2764a">最多</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#b4576f"></i>阿澈</span>
-  <span><i style="background:#4f7fa0"></i>我</span>
+  <span><i style="background:#e1487f"></i>阿澈</span>
+  <span><i style="background:#8a4fd8"></i>我</span>
 </div>
   </div>
 </div>
@@ -727,14 +909,14 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="heatmap">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">05</span>日历热力图</h2>
-    <p class="section-desc">仿 GitHub 贡献图，颜色深浅代表聊了多久</p>
+    <p class="section-desc">一整年的对话热度，颜色深浅代表聊了多久</p>
   </div>
   
     <p class="tiny faint" style="margin-bottom:12px">
-      仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
-      （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
+      一整年的对话铺成一张图：每个格子是一天，<b>颜色越深，那天聊得越久</b>
+      （算的是当天各段对话的时长总和，一段对话指消息间隔不超过 30 分钟的连续交谈）。
     </p>
     
 <div class="heat-wrap">
@@ -742,35 +924,36 @@ footer b { color: var(--ink-soft); }
     <svg viewBox="0 0 60 120" width="60" height="120"
          class="heatmap" role="img"
          aria-label="聊天足迹热力图，共 8 天有对话">
-      <text x="26" y="11" font-size="9" fill="#928c98">10月</text><text x="40" y="11" font-size="9" fill="#928c98">11月</text>
-      <text x="20" y="24.5" font-size="9" text-anchor="end" fill="#928c98">一</text><text x="20" y="52.5" font-size="9" text-anchor="end" fill="#928c98">三</text><text x="20" y="80.5" font-size="9" text-anchor="end" fill="#928c98">五</text><text x="20" y="108.5" font-size="9" text-anchor="end" fill="#928c98">日</text>
-      <rect x="26" y="100" width="11" height="11" rx="2.5" fill="#b4576f"><title>2023-11-05 · 7 条消息 · 聊了 21 分钟（TA 4 / 我 3）</title></rect><rect x="40" y="16" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-06 · 8 条消息 · 聊了 5 分钟（TA 4 / 我 4）</title></rect><rect x="40" y="30" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-07 · 2 条消息 · 聊了 1 分钟（TA 1 / 我 1）</title></rect><rect x="40" y="44" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-08 · 4 条消息 · 聊了 3 分钟（TA 2 / 我 2）</title></rect><rect x="40" y="58" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-09 · 2 条消息 · 聊了 1 分钟（TA 1 / 我 1）</title></rect><rect x="40" y="72" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-10 · 2 条消息 · 聊了 1 分钟（TA 1 / 我 1）</title></rect><rect x="40" y="86" width="11" height="11" rx="2.5" fill="#8e3d55"><title>2023-11-11 · 4 条消息 · 聊了 31 分钟（TA 2 / 我 2）</title></rect><rect x="40" y="100" width="11" height="11" rx="2.5" fill="#f0dde3"><title>2023-11-12 · 4 条消息 · 聊了 2 分钟（TA 2 / 我 2）</title></rect>
+      <text x="26" y="11" font-size="9" fill="#918aa0">10月</text><text x="40" y="11" font-size="9" fill="#918aa0">11月</text>
+      <text x="20" y="24.5" font-size="9" text-anchor="end" fill="#918aa0">一</text><text x="20" y="52.5" font-size="9" text-anchor="end" fill="#918aa0">三</text><text x="20" y="80.5" font-size="9" text-anchor="end" fill="#918aa0">五</text><text x="20" y="108.5" font-size="9" text-anchor="end" fill="#918aa0">日</text>
+      <rect x="26" y="100" width="11" height="11" rx="2.5" fill="#d43d74" data-heat-cell style="--d:0ms"><title>2023-11-05 · 7 条消息 · 聊了 21 分钟（4 / 3）</title></rect><rect x="40" y="16" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-06 · 8 条消息 · 聊了 5 分钟（4 / 4）</title></rect><rect x="40" y="30" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-07 · 2 条消息 · 聊了 1 分钟（1 / 1）</title></rect><rect x="40" y="44" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-08 · 4 条消息 · 聊了 3 分钟（2 / 2）</title></rect><rect x="40" y="58" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-09 · 2 条消息 · 聊了 1 分钟（1 / 1）</title></rect><rect x="40" y="72" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-10 · 2 条消息 · 聊了 1 分钟（1 / 1）</title></rect><rect x="40" y="86" width="11" height="11" rx="2.5" fill="#b32a5c" data-heat-cell style="--d:14ms"><title>2023-11-11 · 4 条消息 · 聊了 31 分钟（2 / 2）</title></rect><rect x="40" y="100" width="11" height="11" rx="2.5" fill="#f7dfea" data-heat-cell style="--d:14ms"><title>2023-11-12 · 4 条消息 · 聊了 2 分钟（2 / 2）</title></rect>
     </svg>
   </div>
   <div class="heat-legend">
-    <span class="tiny faint">颜色越深 = 当天聊得越久</span>
-    <svg width="86" height="11" class="heat-scale" aria-hidden="true">
-      <rect x="0" y="0" width="11" height="11" rx="2.5" fill="#f0ecea"/><rect x="15" y="0" width="11" height="11" rx="2.5" fill="#f0dde3"/><rect x="30" y="0" width="11" height="11" rx="2.5" fill="#e2b9c5"/><rect x="45" y="0" width="11" height="11" rx="2.5" fill="#d08ea2"/><rect x="60" y="0" width="11" height="11" rx="2.5" fill="#b4576f"/><rect x="75" y="0" width="11" height="11" rx="2.5" fill="#8e3d55"/>
+    <span class="tiny faint">颜色越深，那天聊得越久</span>
+    <svg width="101" height="11" class="heat-scale" aria-hidden="true">
+      <rect x="0" y="0" width="11" height="11" rx="2.5" fill="#f2edf4"/><rect x="15" y="0" width="11" height="11" rx="2.5" fill="#f7dfea"/><rect x="30" y="0" width="11" height="11" rx="2.5" fill="#f4bfd4"/><rect x="45" y="0" width="11" height="11" rx="2.5" fill="#ef95b7"/><rect x="60" y="0" width="11" height="11" rx="2.5" fill="#e86a97"/><rect x="75" y="0" width="11" height="11" rx="2.5" fill="#d43d74"/><rect x="90" y="0" width="11" height="11" rx="2.5" fill="#b32a5c"/>
     </svg>
-    <span class="tiny faint">0 → 31 分钟</span>
+    <span class="tiny faint">几乎没有 → 0 到 31 分钟</span>
   </div>
   <div class="heat-facts tiny">
     <span>有对话的天数：<b>8</b></span>
-    <span>消息最多：<b>2023-11-06</b>（8 条）</span>
-    <span>聊得最久：<b>2023-11-11</b>（31 分钟）</span>
+    <span>最密集的一天：<b>2023-11-06</b>（8 条）</span>
+    <span>最投入的一天：<b>2023-11-11</b>（31 分钟）</span>
   </div>
   <p class="tiny faint heat-note">
-    口径：每个格子是一天，颜色深浅取<b>当天各段对话的时长之和</b>——
-    一段对话指相邻消息间隔不超过 30 分钟的连续聊天。
-    所以「发了很多条但集中在 5 分钟内」的一天颜色会很浅；
-    而「早上说一句、晚上说一句」也<b>不会</b>被算成聊了一整天。
-    悬停（手机上点按）可以看到当天明细。
+    每一个格子是一天，深浅代表那一天的<b>对话时长总和</b>；
+    一段对话指消息间隔不超过 30 分钟的连续交谈。
+    所以「一口气发很多条、但集中在几分钟内」的一天颜色会偏浅，
+    而「早上说一句、晚上说一句」也不会被算成聊了一整天——
+    这里衡量的是<b>真正交谈的时间密度</b>，不是消息条数。
+    悬停或点按任意格子，可以看到当天的明细。
   </p>
 </div>
 </section>
     
 <section class="section" id="topics">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">06</span>话题词云</h2>
     <p class="section-desc">你们聊得最多的是什么</p>
   </div>
@@ -781,13 +964,13 @@ footer b { color: var(--ink-soft); }
     
 <div class="cloud-wrap">
   <svg viewBox="0 0 720 340" class="wordcloud" role="img"
-       aria-label="话题词云，高频词：加班、吃饭、周末、看情况、最近">
-    <text x="360.0" y="136.9" font-size="40.0" fill="#5f5966" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600"><title>加班：出现 4 次，主要由双方说起</title>加班</text><text x="383.6" y="188.3" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>吃饭：出现 2 次，主要由我说起</title>吃饭</text><text x="323.1" y="186.6" font-size="28.6" fill="#4f7fa0" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>周末：出现 2 次，主要由我说起</title>周末</text><text x="374.9" y="225.5" font-size="28.1" fill="#b4576f" opacity="0.80" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>看情况：出现 3 次，主要由阿澈说起</title>看情况</text><text x="427.4" y="146.3" font-size="24.5" fill="#b4576f" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>最近：出现 3 次，主要由阿澈说起</title>最近</text><text x="295.3" y="152.9" font-size="21.2" fill="#5f5966" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500"><title>麻烦：出现 2 次，主要由双方说起</title>麻烦</text>
+       aria-label="话题词云，高频词：加班、吃饭、周末、看情况、最近" data-reveal>
+    <text x="360.0" y="136.9" font-size="40.0" fill="#5c5468" opacity="1.00" text-anchor="middle" dominant-baseline="middle" font-weight="600" style="--d:0ms"><title>加班：出现 4 次，主要由双方说起</title>加班</text><text x="383.6" y="188.3" font-size="28.6" fill="#8a4fd8" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500" style="--d:218ms"><title>吃饭：出现 2 次，主要由我说起</title>吃饭</text><text x="323.1" y="186.6" font-size="28.6" fill="#8a4fd8" opacity="0.81" text-anchor="middle" dominant-baseline="middle" font-weight="500" style="--d:226ms"><title>周末：出现 2 次，主要由我说起</title>周末</text><text x="374.9" y="225.5" font-size="28.1" fill="#e1487f" opacity="0.80" text-anchor="middle" dominant-baseline="middle" font-weight="500" style="--d:243ms"><title>看情况：出现 3 次，主要由阿澈说起</title>看情况</text><text x="427.4" y="146.3" font-size="24.5" fill="#e1487f" opacity="0.75" text-anchor="middle" dominant-baseline="middle" font-weight="500" style="--d:308ms"><title>最近：出现 3 次，主要由阿澈说起</title>最近</text><text x="295.3" y="152.9" font-size="21.2" fill="#5c5468" opacity="0.71" text-anchor="middle" dominant-baseline="middle" font-weight="500" style="--d:364ms"><title>麻烦：出现 2 次，主要由双方说起</title>麻烦</text>
   </svg>
   <div class="legend">
-    <span><i style="background:#b4576f"></i>阿澈说得更多</span>
-    <span><i style="background:#4f7fa0"></i>我说得更多</span>
-    <span><i style="background:#5f5966"></i>双方相当</span>
+    <span><i style="background:#e1487f"></i>阿澈说得更多</span>
+    <span><i style="background:#8a4fd8"></i>我说得更多</span>
+    <span><i style="background:#5c5468"></i>双方相当</span>
   </div>
   <p class="tiny faint">
     字号 = 该词在 33 条消息里的加权出现频次（话题种子词加权更高）；
@@ -798,7 +981,7 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="persona">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">07</span>阿澈 是怎样的人</h2>
     <p class="section-desc">基于可观测行为，不是性格判断</p>
   </div>
@@ -810,71 +993,71 @@ footer b { color: var(--ink-soft); }
     一个人回得慢，可能只是不擅长用文字说话。
   </p>
   <div class="persona-grid">
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:0ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#5f5966">夜晚型</span>
-        <span class="persona-tone tiny" style="background:#5f59661f;color:#5f5966">
+        <span class="persona-label" style="color:#5c5468">夜晚型</span>
+        <span class="persona-tone tiny" style="background:#5c54681f;color:#5c5468">
           中性</span>
       </div>
       <p class="persona-text">TA 有 65% 的消息在 18:00 之后，白天基本不出现</p>
-      <div class="persona-bar"><div style="width:100%;background:#5f5966"></div></div>
+      <div class="persona-bar"><div style="width:100%;background:#5c5468"></div></div>
       <span class="persona-support tiny faint">11 / 17 条在晚间</span>
     </article>
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:60ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#4f7fa0">慢回型</span>
-        <span class="persona-tone tiny" style="background:#4f7fa01f;color:#4f7fa0">
+        <span class="persona-label" style="color:#8a4fd8">慢回型</span>
+        <span class="persona-tone tiny" style="background:#8a4fd81f;color:#8a4fd8">
           偏疏离</span>
       </div>
       <p class="persona-text">中位回复要 4.5 小时，有 58% 的回复超过 1 小时</p>
-      <div class="persona-bar"><div style="width:100%;background:#4f7fa0"></div></div>
+      <div class="persona-bar"><div style="width:100%;background:#8a4fd8"></div></div>
       <span class="persona-support tiny faint">12 次回复，中位 4.5 小时</span>
     </article>
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:120ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#b4576f">主动型</span>
-        <span class="persona-tone tiny" style="background:#b4576f1f;color:#b4576f">
+        <span class="persona-label" style="color:#e1487f">主动型</span>
+        <span class="persona-tone tiny" style="background:#e1487f1f;color:#e1487f">
           偏积极</span>
       </div>
       <p class="persona-text">12 段对话里有 12 段是 TA 先开口（100%）</p>
-      <div class="persona-bar"><div style="width:100%;background:#b4576f"></div></div>
+      <div class="persona-bar"><div style="width:100%;background:#e1487f"></div></div>
       <span class="persona-support tiny faint">12 / 12 段</span>
     </article>
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:180ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#b4576f">会先低头型</span>
-        <span class="persona-tone tiny" style="background:#b4576f1f;color:#b4576f">
+        <span class="persona-label" style="color:#e1487f">会先低头型</span>
+        <span class="persona-tone tiny" style="background:#e1487f1f;color:#e1487f">
           偏积极</span>
       </div>
       <p class="persona-text">3 次超过一天的沉默里，TA 主动打破了 3 次（100%）</p>
-      <div class="persona-bar"><div style="width:100%;background:#b4576f"></div></div>
+      <div class="persona-bar"><div style="width:100%;background:#e1487f"></div></div>
       <span class="persona-support tiny faint">3 / 3 次</span>
     </article>
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:240ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#4f7fa0">惜字如金型</span>
-        <span class="persona-tone tiny" style="background:#4f7fa01f;color:#4f7fa0">
+        <span class="persona-label" style="color:#8a4fd8">惜字如金型</span>
+        <span class="persona-tone tiny" style="background:#8a4fd81f;color:#8a4fd8">
           偏疏离</span>
       </div>
       <p class="persona-text">TA 平均每条只有 3.6 字，你平均 6.6 字</p>
-      <div class="persona-bar"><div style="width:76%;background:#4f7fa0"></div></div>
+      <div class="persona-bar"><div style="width:76%;background:#8a4fd8"></div></div>
       <span class="persona-support tiny faint">字数比 0.54×</span>
     </article>
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:300ms">
       <div class="persona-head">
-        <span class="persona-label" style="color:#b4576f">爱问型</span>
-        <span class="persona-tone tiny" style="background:#b4576f1f;color:#b4576f">
+        <span class="persona-label" style="color:#e1487f">爱问型</span>
+        <span class="persona-tone tiny" style="background:#e1487f1f;color:#e1487f">
           偏积极</span>
       </div>
       <p class="persona-text">TA 有 29% 的消息是提问，说明在主动了解你</p>
-      <div class="persona-bar"><div style="width:74%;background:#b4576f"></div></div>
+      <div class="persona-bar"><div style="width:74%;background:#e1487f"></div></div>
       <span class="persona-support tiny faint">5 条提问</span>
     </article></div>
 </div>
 </section>
     
 <section class="section" id="timeline">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">08</span>关键节点</h2>
     <p class="section-desc">这段关系里值得记下来的时刻</p>
   </div>
@@ -882,92 +1065,92 @@ footer b { color: var(--ink-soft); }
     <p class="tiny faint" style="margin-bottom:12px">
       这段关系里值得被记下来的时刻，按时间排列。
     </p>
-    <ol class="timeline">
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#b4576f"></span>
-      <div class="tl-body">
+    <ol class="timeline" data-timeline>
+    <li class="tl-node" title="聊得最多的月份">
+      <span class="tl-dot" style="background:#e1487f"></span>
+      <div class="tl-body" data-reveal style="--d:0">
         <div class="tl-head">
-          <span class="tl-title" style="color:#b4576f">聊得最多的月份</span>
+          <span class="tl-title" style="color:#e1487f">聊得最多的月份</span>
           <span class="tl-when">2023-11-01</span>
         </div>
         <p class="tl-detail">2023 年 11 月：33 条消息，8 天有对话</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#4f8a6b"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="第一次说话">
+      <span class="tl-dot" style="background:#2fa37a"></span>
+      <div class="tl-body" data-reveal style="--d:55">
         <div class="tl-head">
-          <span class="tl-title" style="color:#4f8a6b">第一次说话</span>
+          <span class="tl-title" style="color:#2fa37a">第一次说话</span>
           <span class="tl-when">2023-11-05</span>
         </div>
         <p class="tl-detail">阿澈：「今天加班到好晚」</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#b4576f"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最热闹的一天">
+      <span class="tl-dot" style="background:#e1487f"></span>
+      <div class="tl-body" data-reveal style="--d:110">
         <div class="tl-head">
-          <span class="tl-title" style="color:#b4576f">最热闹的一天</span>
+          <span class="tl-title" style="color:#e1487f">最热闹的一天</span>
           <span class="tl-when">2023-11-06</span>
         </div>
         <p class="tl-detail">8 条消息，聊了 721 分钟</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#4f7fa0"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最长的一次沉默">
+      <span class="tl-dot" style="background:#8a4fd8"></span>
+      <div class="tl-body" data-reveal style="--d:165">
         <div class="tl-head">
-          <span class="tl-title" style="color:#4f7fa0">最长的一次沉默</span>
+          <span class="tl-title" style="color:#8a4fd8">最长的一次沉默</span>
           <span class="tl-when">2023-11-07</span>
         </div>
         <p class="tl-detail">从 2023-11-07 到 2023-11-08，整整 1.5 天 没有说话；最后由阿澈打破</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#4f8a6b"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最暖的一天">
+      <span class="tl-dot" style="background:#2fa37a"></span>
+      <div class="tl-body" data-reveal style="--d:220">
         <div class="tl-head">
-          <span class="tl-title" style="color:#4f8a6b">最暖的一天</span>
+          <span class="tl-title" style="color:#2fa37a">最暖的一天</span>
           <span class="tl-when">2023-11-08</span>
         </div>
         <p class="tl-detail">情绪均分 +0.21（越高越暖）</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#4f7fa0"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最冷的一天">
+      <span class="tl-dot" style="background:#8a4fd8"></span>
+      <div class="tl-body" data-reveal style="--d:275">
         <div class="tl-head">
-          <span class="tl-title" style="color:#4f7fa0">最冷的一天</span>
+          <span class="tl-title" style="color:#8a4fd8">最冷的一天</span>
           <span class="tl-when">2023-11-11</span>
         </div>
         <p class="tl-detail">情绪均分 -0.46</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#b07d34"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最长的一次聊天">
+      <span class="tl-dot" style="background:#f2764a"></span>
+      <div class="tl-body" data-reveal style="--d:330">
         <div class="tl-head">
-          <span class="tl-title" style="color:#b07d34">最长的一次聊天</span>
+          <span class="tl-title" style="color:#f2764a">最长的一次聊天</span>
           <span class="tl-when">2023-11-11 21:00</span>
         </div>
         <p class="tl-detail">从 21:00 聊到 21:31，共 31 分钟、4 条消息</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#b07d34"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="聊得最久的一天">
+      <span class="tl-dot" style="background:#f2764a"></span>
+      <div class="tl-body" data-reveal style="--d:385">
         <div class="tl-head">
-          <span class="tl-title" style="color:#b07d34">聊得最久的一天</span>
+          <span class="tl-title" style="color:#f2764a">聊得最久的一天</span>
           <span class="tl-when">2023-11-11</span>
         </div>
         <p class="tl-detail">各段对话加起来 31 分钟、4 条消息</p>
       </div>
     </li>
-    <li class="tl-node">
-      <span class="tl-dot" style="background:#5f5966"></span>
-      <div class="tl-body">
+    <li class="tl-node" title="最后一次说话">
+      <span class="tl-dot" style="background:#5c5468"></span>
+      <div class="tl-body" data-reveal style="--d:440">
         <div class="tl-head">
-          <span class="tl-title" style="color:#5f5966">最后一次说话</span>
+          <span class="tl-title" style="color:#5c5468">最后一次说话</span>
           <span class="tl-when">2023-11-12</span>
         </div>
         <p class="tl-detail">我：「好」</p>
@@ -976,82 +1159,82 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="radar">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">09</span>八维雷达图</h2>
     <p class="section-desc">八个描述性维度的双方对比</p>
   </div>
   <div class="card">
 <svg viewBox="0 0 520 400" class="radar" role="img" aria-label="八维雷达图">
-  <polygon points="260.0,170.5 280.9,179.1 289.5,200.0 280.9,220.9 260.0,229.5 239.1,220.9 230.5,200.0 239.1,179.1" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,141.0 301.7,158.3 319.0,200.0 301.7,241.7 260.0,259.0 218.3,241.7 201.0,200.0 218.3,158.3" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,111.5 322.6,137.4 348.5,200.0 322.6,262.6 260.0,288.5 197.4,262.6 171.5,200.0 197.4,137.4" fill="none" stroke="#e7e2df" stroke-width="1"/><polygon points="260.0,82.0 343.4,116.6 378.0,200.0 343.4,283.4 260.0,318.0 176.6,283.4 142.0,200.0 176.6,116.6" fill="none" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="82.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="116.6" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="378.0" y2="200.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="283.4" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="318.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="283.4" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="142.0" y2="200.0" stroke="#e7e2df" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="116.6" stroke="#e7e2df" stroke-width="1"/>
-  <polygon points="260.0,88.5 260.0,200.0 333.0,200.0 275.5,215.5" fill="#4f7fa033" stroke="#4f7fa0" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="88.5" r="3" fill="#4f7fa0"/><circle cx="260.0" cy="200.0" r="3" fill="#4f7fa0"/><circle cx="333.0" cy="200.0" r="3" fill="#4f7fa0"/><circle cx="275.5" cy="215.5" r="3" fill="#4f7fa0"/>
-  <polygon points="260.0,183.9 340.5,119.5 315.6,255.6 235.3,224.7" fill="#b4576f3d" stroke="#b4576f" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="183.9" r="3" fill="#b4576f"/><circle cx="340.5" cy="119.5" r="3" fill="#b4576f"/><circle cx="315.6" cy="255.6" r="3" fill="#b4576f"/><circle cx="235.3" cy="224.7" r="3" fill="#b4576f"/>
-  <text x="260.0" y="48.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#5f5966">回复速度</text><text x="367.5" y="92.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">主动发起</text><text x="412.0" y="200.0" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">平均字数</text><text x="367.5" y="307.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5f5966">提问追问</text><text x="260.0" y="352.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#928c98">称呼表情 N/A</text><text x="152.5" y="307.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#5f5966">谁在收尾</text><text x="108.0" y="200.0" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#928c98">深夜活跃 N/A</text><text x="152.5" y="92.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#928c98">情绪走向 N/A</text>
+  <polygon points="260.0,170.5 280.9,179.1 289.5,200.0 280.9,220.9 260.0,229.5 239.1,220.9 230.5,200.0 239.1,179.1" fill="none" stroke="#ece5ef" stroke-width="1"/><polygon points="260.0,141.0 301.7,158.3 319.0,200.0 301.7,241.7 260.0,259.0 218.3,241.7 201.0,200.0 218.3,158.3" fill="none" stroke="#ece5ef" stroke-width="1"/><polygon points="260.0,111.5 322.6,137.4 348.5,200.0 322.6,262.6 260.0,288.5 197.4,262.6 171.5,200.0 197.4,137.4" fill="none" stroke="#ece5ef" stroke-width="1"/><polygon points="260.0,82.0 343.4,116.6 378.0,200.0 343.4,283.4 260.0,318.0 176.6,283.4 142.0,200.0 176.6,116.6" fill="none" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="82.0" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="116.6" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="378.0" y2="200.0" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="343.4" y2="283.4" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="260.0" y2="318.0" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="283.4" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="142.0" y2="200.0" stroke="#ece5ef" stroke-width="1"/><line x1="260.0" y1="200.0" x2="176.6" y2="116.6" stroke="#ece5ef" stroke-width="1"/>
+  <polygon points="260.0,88.5 260.0,200.0 333.0,200.0 275.5,215.5" fill="#8a4fd833" stroke="#8a4fd8" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="88.5" r="3" fill="#8a4fd8"/><circle cx="260.0" cy="200.0" r="3" fill="#8a4fd8"/><circle cx="333.0" cy="200.0" r="3" fill="#8a4fd8"/><circle cx="275.5" cy="215.5" r="3" fill="#8a4fd8"/>
+  <polygon points="260.0,183.9 340.5,119.5 315.6,255.6 235.3,224.7" fill="#e1487f3d" stroke="#e1487f" stroke-width="2" stroke-linejoin="round"/><circle cx="260.0" cy="183.9" r="3" fill="#e1487f"/><circle cx="340.5" cy="119.5" r="3" fill="#e1487f"/><circle cx="315.6" cy="255.6" r="3" fill="#e1487f"/><circle cx="235.3" cy="224.7" r="3" fill="#e1487f"/>
+  <text x="260.0" y="48.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#5c5468">回复速度</text><text x="367.5" y="92.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5c5468">主动发起</text><text x="412.0" y="200.0" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5c5468">平均字数</text><text x="367.5" y="307.5" text-anchor="start" dominant-baseline="middle" font-size="12" fill="#5c5468">提问追问</text><text x="260.0" y="352.0" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="#918aa0">称呼表情 N/A</text><text x="152.5" y="307.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#5c5468">谁在收尾</text><text x="108.0" y="200.0" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#918aa0">深夜活跃 N/A</text><text x="152.5" y="92.5" text-anchor="end" dominant-baseline="middle" font-size="12" fill="#918aa0">情绪走向 N/A</text>
 </svg>
 <div class="legend">
-  <span><i style="background:#b4576f"></i>阿澈（TA）</span>
-  <span><i style="background:#4f7fa0"></i>我（我）</span>
+  <span><i style="background:#e1487f"></i>阿澈（TA）</span>
+  <span><i style="background:#8a4fd8"></i>我（我）</span>
   <span class="faint">标注 N/A = 该维度样本不足，不参与打分</span>
 </div></div>
 </section>
     
 <section class="section" id="dimensions">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">10</span>维度明细</h2>
     <p class="section-desc">每个维度的子指标数据</p>
   </div>
   <div class="dim-grid">
-  <article class="dim-card">
+  <article class="dim-card" data-reveal>
     <h3>回复间隔与响应速度</h3>
     
     <p class="dim-summary">TA 中位回复 3.0 小时，比你慢约 178.5 倍（你 1 分钟）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:13.6%;background:#b4576f"></div></div><em style="color:#b4576f">14</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:94.5%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">95</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:13.6%;background:#e1487f"></div></div><em style="color:#e1487f">14</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:94.5%;background:#8a4fd8"></div></div><em style="color:#8a4fd8">95</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 的中位回复间隔</span><span class="chip-val">3.0 小时</span></div><div class="chip"><span class="chip-label">你的中位回复间隔</span><span class="chip-val">1 分钟</span></div><div class="chip"><span class="chip-label">TA 的 5 分钟内回复率</span><span class="chip-val">25%</span></div><div class="chip"><span class="chip-label">你的 5 分钟内回复率</span><span class="chip-val">100%</span></div><div class="chip"><span class="chip-label">TA 超过 1 小时才回的比例</span><span class="chip-val">58%</span></div><div class="chip"><span class="chip-label">你超过 1 小时才回的比例</span><span class="chip-val">0%</span></div><div class="chip"><span class="chip-label">回复速度不对称度</span><span class="chip-val">178.50×</span><span class="chip-note">数值 = TA 的中位回复间隔 ÷ 你的</span></div></div>
   </article>
-  <article class="dim-card">
+  <article class="dim-card" data-reveal style="--d:60ms">
     <h3>主动发起对话次数</h3>
     
     <p class="dim-summary">多数对话由 TA 开口：9 轮里 TA 发起 9 轮（100%）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:96.5%;background:#b4576f"></div></div><em style="color:#b4576f">96</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:1.0%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">0</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:96.5%;background:#e1487f"></div></div><em style="color:#e1487f">96</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:1.0%;background:#8a4fd8"></div></div><em style="color:#8a4fd8">0</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 主动开口的轮次占比</span><span class="chip-val">100%</span><span class="chip-note">共 9 轮（静默 6 小时算新的一轮）</span></div><div class="chip"><span class="chip-label">你主动开口的轮次占比</span><span class="chip-val">0%</span></div><div class="chip"><span class="chip-label">TA 的连续发言段占比</span><span class="chip-val">52%</span><span class="chip-note">共 33 段</span></div><div class="chip chip-na"><span class="chip-label">你的连续发言段占比</span><span class="chip-val">48%</span></div><div class="chip"><span class="chip-label">TA 占每日首条消息的比例</span><span class="chip-val">100%</span><span class="chip-note">有消息的天数 8 天</span></div><div class="chip chip-na"><span class="chip-label">你占每日首条消息的比例</span><span class="chip-val">0%</span></div><div class="chip"><span class="chip-label">TA 的「冷启动」次数</span><span class="chip-val">9 次</span><span class="chip-note">静默后主动开口</span></div></div>
   </article>
-  <article class="dim-card">
+  <article class="dim-card" data-reveal style="--d:120ms">
     <h3>平均字数与投入度</h3>
     
     <p class="dim-summary">双方消息量不足以稳定比较字数（TA 17 条 / 你 16 条）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:61.9%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">62</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:61.9%;background:#8a4fd8"></div></div><em style="color:#8a4fd8">62</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 平均每条消息字数</span><span class="chip-val">3.6 字</span></div><div class="chip chip-na"><span class="chip-label">你平均每条消息字数</span><span class="chip-val">6.6 字</span></div><div class="chip chip-na"><span class="chip-label">TA 的实质性消息平均字数</span><span class="chip-val">6.7 字</span><span class="chip-note">实质性消息 3 条（≥6 字且非敷衍语）</span></div><div class="chip"><span class="chip-label">你的实质性消息平均字数</span><span class="chip-val">8.2 字</span><span class="chip-note">实质性消息 11 条</span></div><div class="chip chip-na"><span class="chip-label">实质性消息字数比（TA ÷ 你）</span><span class="chip-val">0.81×</span></div><div class="chip chip-na"><span class="chip-label">TA 的极短消息（≤3 字）占比</span><span class="chip-val">59%</span><span class="chip-note">如「嗯」「哦」「好」</span></div><div class="chip chip-na"><span class="chip-label">你的极短消息占比</span><span class="chip-val">12%</span></div></div>
   </article>
-  <article class="dim-card">
+  <article class="dim-card" data-reveal style="--d:180ms">
     <h3>提问与追问比例</h3>
     
     <p class="dim-summary">提问样本不足（TA 17 条 / 你 16 条有效消息）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:66.7%;background:#b4576f"></div></div><em style="color:#b4576f">67</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:18.5%;background:#4f7fa0"></div></div><em style="color:#4f7fa0">19</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:66.7%;background:#e1487f"></div></div><em style="color:#e1487f">67</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:18.5%;background:#8a4fd8"></div></div><em style="color:#8a4fd8">19</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 的消息中提问占比</span><span class="chip-val">29%</span><span class="chip-note">提问 5 条 / 共 17 条</span></div><div class="chip chip-na"><span class="chip-label">你的消息中提问占比</span><span class="chip-val">56%</span></div><div class="chip"><span class="chip-label">TA 提问后的追问率</span><span class="chip-val">20%</span><span class="chip-note">提问后 10 分钟内继续说</span></div><div class="chip"><span class="chip-label">你的追问率</span><span class="chip-val">11%</span></div><div class="chip"><span class="chip-label">TA 的提问里没被回应的比例</span><span class="chip-val">0%</span><span class="chip-note">2 小时内没有收到你的回复</span></div><div class="chip chip-na"><span class="chip-label">提问占比之比（TA ÷ 你）</span><span class="chip-val">0.52×</span></div></div>
   </article>
-  <article class="dim-card dim-na">
+  <article class="dim-card dim-na" data-reveal style="--d:240ms">
     <h3>称呼与表情使用</h3>
-    <p class="tiny" style="color:#b5793a">这一项样本不足，<b>没有参与打分</b>。</p>
+    <p class="tiny" style="color:#e08a2e">这一项样本不足，<b>没有参与打分</b>。</p>
     <p class="dim-summary">整段记录里既没有亲昵称呼、也没有表情使用——这一项没有信息，不参与打分。</p>
     <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 使用亲昵称呼的消息占比</span><span class="chip-val">0%</span><span class="chip-note">命中 0 条</span></div><div class="chip chip-na"><span class="chip-label">你使用亲昵称呼的消息占比</span><span class="chip-val">0%</span><span class="chip-note">命中 0 条</span></div><div class="chip chip-na"><span class="chip-label">TA 的表情/表情包使用率</span><span class="chip-val">0%</span></div><div class="chip chip-na"><span class="chip-label">你的表情使用率</span><span class="chip-val">0%</span></div><div class="chip chip-na"><span class="chip-label">TA 的亲昵称呼随时间的变化</span><span class="chip-val">+0.00</span><span class="chip-note">正数=越来越亲昵，负数=在降温</span></div><div class="chip chip-na"><span class="chip-label">TA 最后一次叫你亲昵称呼距今占比</span><span class="chip-val">—</span><span class="chip-note">0% = 最近还在叫，接近 100% = 很久没叫了</span></div></div>
   </article>
-  <article class="dim-card">
+  <article class="dim-card" data-reveal style="--d:300ms">
     <h3>谁在结束对话</h3>
     
     <p class="dim-summary">多数对话由你收尾（9 轮里 11% 是 TA 说的最后一句）。</p>
-    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:29.6%;background:#b4576f"></div></div><em style="color:#b4576f">30</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
+    <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:29.6%;background:#e1487f"></div></div><em style="color:#e1487f">30</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip"><span class="chip-label">TA 结束对话的比例</span><span class="chip-val">11%</span><span class="chip-note">共 9 轮对话</span></div><div class="chip chip-na"><span class="chip-label">你结束对话的比例</span><span class="chip-val">89%</span></div><div class="chip"><span class="chip-label">TA 忽略你的提问、直接走开的比例</span><span class="chip-val">56%</span><span class="chip-note">你的提问 9 次</span></div><div class="chip chip-na"><span class="chip-label">你忽略 TA 提问的比例</span><span class="chip-val">0%</span><span class="chip-note">TA 的提问 5 次</span></div><div class="chip"><span class="chip-label">TA 用收尾语结束的次数</span><span class="chip-val">0 次</span><span class="chip-note">如「晚安」「我先忙」</span></div></div>
   </article>
-  <article class="dim-card dim-na">
+  <article class="dim-card dim-na" data-reveal style="--d:360ms">
     <h3>深夜及特定时段活跃度</h3>
-    <p class="tiny" style="color:#b5793a">这一项样本不足，<b>没有参与打分</b>。</p>
+    <p class="tiny" style="color:#e08a2e">这一项样本不足，<b>没有参与打分</b>。</p>
     <p class="dim-summary">消息量不足以分析活跃时段（33 条）。</p>
     <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 的深夜消息占比</span><span class="chip-val">12%</span><span class="chip-note">23:00–03:00</span></div><div class="chip chip-na"><span class="chip-label">你的深夜消息占比</span><span class="chip-val">12%</span></div><div class="chip chip-na"><span class="chip-label">深夜时段里 TA 的发言占比</span><span class="chip-val">50%</span><span class="chip-note">深夜共 4 条</span></div><div class="chip chip-na"><span class="chip-label">TA 最活跃的时段</span><span class="chip-val">晚上 18-24</span></div><div class="chip chip-na"><span class="chip-label">你最活跃的时段</span><span class="chip-val">晚上 18-24</span></div></div>
   </article>
-  <article class="dim-card dim-na">
+  <article class="dim-card dim-na" data-reveal style="--d:420ms">
     <h3>情绪倾向随时间变化</h3>
-    <p class="tiny" style="color:#b5793a">这一项样本不足，<b>没有参与打分</b>。</p>
+    <p class="tiny" style="color:#e08a2e">这一项样本不足，<b>没有参与打分</b>。</p>
     <p class="dim-summary">可用于情绪分析的文本不足（TA 17 条 / 你 16 条）。</p>
     <div class="mini-bars"><div class="mini"><span>阿澈</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div><div class="mini"><span>我</span><div class="mini-track"><div class="mini-fill" style="width:0"></div></div><em class="faint">N/A</em></div></div>
     <div class="chips"><div class="chip chip-na"><span class="chip-label">TA 消息的平均情绪分</span><span class="chip-val">-0.12</span><span class="chip-note">范围 -1（冷）~ +1（暖）</span></div><div class="chip chip-na"><span class="chip-label">你的平均情绪分</span><span class="chip-val">+0.05</span></div><div class="chip chip-na"><span class="chip-label">TA 的情绪走向</span><span class="chip-val">-0.20</span><span class="chip-note">后半段平均 − 前半段平均；负数=在变冷</span></div><div class="chip chip-na"><span class="chip-label">你的情绪走向</span><span class="chip-val">-0.15</span></div><div class="chip chip-na"><span class="chip-label">TA 的强负向消息占比</span><span class="chip-val">12%</span><span class="chip-note">情绪分 ≤ -0.5，如吵架、冷淡</span></div></div>
@@ -1059,99 +1242,99 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="trends">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">11</span>互动趋势</h2>
     <p class="section-desc">消息量 / 主动发起 / 情绪 / 回复速度</p>
   </div>
   <div class="chart-grid">
-<div class="chart-card">
+<div class="chart-card" data-reveal>
   <h4>消息量走势</h4>
   <p class="tiny faint">每一段的双方消息条数</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="消息量走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">16</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">16</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">16</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">17</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">17</text>
-    <circle cx="344.0" cy="18.0" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#4f7fa0"/>
-    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">11/5</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">16</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">16</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">16</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">17</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">17</text>
+    <circle cx="344.0" cy="18.0" r="2.8" fill="#e1487f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#8a4fd8"/>
+    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#918aa0">11/5</text>
   </svg>
-  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
+  <div class="legend"><span><i style="background:#e1487f"></i>阿澈</span><span><i style="background:#8a4fd8"></i>我</span></div>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-reveal>
   <h4>谁在主动开口</h4>
   <p class="tiny faint">每一段里由谁开启的对话轮次</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="谁在主动开口">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">2</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">4</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">7</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">9</text>
-    <circle cx="344.0" cy="18.0" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#4f7fa0"/>
-    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">11/5</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">2</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">4</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">7</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">9</text>
+    <circle cx="344.0" cy="18.0" r="2.8" fill="#e1487f"/><circle cx="344.0" cy="156.0" r="2.8" fill="#8a4fd8"/>
+    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#918aa0">11/5</text>
   </svg>
-  <div class="legend"><span><i style="background:#b4576f"></i>阿澈 发起</span><span><i style="background:#4f7fa0"></i>我 发起</span></div>
+  <div class="legend"><span><i style="background:#e1487f"></i>阿澈 发起</span><span><i style="background:#8a4fd8"></i>我 发起</span></div>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-reveal>
   <h4>情绪倾向走势</h4>
   <p class="tiny faint">基于本地情感词典的均分（-1 冷 ~ +1 暖）</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="情绪倾向走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">-1.0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">-0.5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+0.0</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+0.5</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">+1.0</text>
-    <circle cx="344.0" cy="95.2" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="83.9" r="2.8" fill="#4f7fa0"/>
-    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">11/5</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">-1.0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">-0.5</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">+0.0</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">+0.5</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">+1.0</text>
+    <circle cx="344.0" cy="95.2" r="2.8" fill="#e1487f"/><circle cx="344.0" cy="83.9" r="2.8" fill="#8a4fd8"/>
+    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#918aa0">11/5</text>
   </svg>
-  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
+  <div class="legend"><span><i style="background:#e1487f"></i>阿澈</span><span><i style="background:#8a4fd8"></i>我</span></div>
 </div>
-<div class="chart-card">
+<div class="chart-card" data-reveal>
   <h4>回复速度走势</h4>
   <p class="tiny faint">每一段的中位回复间隔（分钟，越低越快）</p>
   <svg viewBox="0 0 660 190" class="linechart" role="img" aria-label="回复速度走势">
-    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">45</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">89</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#e7e2df" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">134</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#e7e2df" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#928c98">178</text>
-    <circle cx="344.0" cy="18.0" r="2.8" fill="#b4576f"/><circle cx="344.0" cy="155.2" r="2.8" fill="#4f7fa0"/>
-    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#928c98">11/5</text>
+    <line x1="42" y1="156.0" x2="646" y2="156.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="156.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">0</text><line x1="42" y1="121.5" x2="646" y2="121.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="121.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">45</text><line x1="42" y1="87.0" x2="646" y2="87.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="87.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">89</text><line x1="42" y1="52.5" x2="646" y2="52.5" stroke="#ece5ef" stroke-width="1"/><text x="36" y="52.5" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">134</text><line x1="42" y1="18.0" x2="646" y2="18.0" stroke="#ece5ef" stroke-width="1"/><text x="36" y="18.0" text-anchor="end" dominant-baseline="middle" font-size="9" fill="#918aa0">178</text>
+    <circle cx="344.0" cy="18.0" r="2.8" fill="#e1487f"/><circle cx="344.0" cy="155.2" r="2.8" fill="#8a4fd8"/>
+    <text x="344.0" y="172" text-anchor="middle" font-size="9" fill="#918aa0">11/5</text>
   </svg>
-  <div class="legend"><span><i style="background:#b4576f"></i>阿澈</span><span><i style="background:#4f7fa0"></i>我</span></div>
+  <div class="legend"><span><i style="background:#e1487f"></i>阿澈</span><span><i style="background:#8a4fd8"></i>我</span></div>
 </div></div>
 </section>
     
 <section class="section" id="evidence">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">12</span>原话与证据</h2>
     <p class="section-desc">加分项、拖后腿项与真实片段</p>
   </div>
   
-    <div class="wins"><div class="win"><h4>主要加分项</h4><ul><li><span>主动发起对话次数</span><span class="win-score" style="color:#4f8a6b">96</span><span class="tiny faint">权重 33.3%</span></li><li><span>提问与追问比例</span><span class="win-score" style="color:#4f8a6b">67</span><span class="tiny faint">权重 18.2%</span></li></ul></div><div class="win"><h4>主要拖后腿</h4><ul><li><span>回复间隔与响应速度</span><span class="win-score" style="color:#b5793a">14</span><span class="tiny faint">权重 36.4%</span></li><li><span>谁在结束对话</span><span class="win-score" style="color:#b5793a">30</span><span class="tiny faint">权重 12.1%</span></li></ul></div></div>
+    <div class="wins"><div class="win" data-reveal><h4>主要加分项</h4><ul><li><span>主动发起对话次数</span><span class="win-score" style="color:#2fa37a">96</span><span class="tiny faint">权重 33.3%</span></li><li><span>提问与追问比例</span><span class="win-score" style="color:#2fa37a">67</span><span class="tiny faint">权重 18.2%</span></li></ul></div><div class="win" data-reveal style="--d:90ms"><h4>主要拖后腿</h4><ul><li><span>回复间隔与响应速度</span><span class="win-score" style="color:#e08a2e">14</span><span class="tiny faint">权重 36.4%</span></li><li><span>谁在结束对话</span><span class="win-score" style="color:#e08a2e">30</span><span class="tiny faint">权重 12.1%</span></li></ul></div></div>
     <p class="tiny faint" style="margin:20px 0 12px">
       下面每一句都来自你导入的文件，没有改写、没有生成。自己复核一遍，比相信分数更重要。
     </p>
     <ul class="ev-list">
-    <li class="ev">
+    <li class="ev" data-reveal>
       <div class="ev-head">
-        <span class="ev-who" style="color:#b4576f">阿澈</span>
+        <span class="ev-who" style="color:#e1487f">阿澈</span>
         <span class="ev-when">11-05 22:15</span>
       </div>
       <blockquote>还没 不想吃了</blockquote>
       <span class="ev-reason">TA 最快的一次回复（间隔 34 秒）</span>
     </li>
-    <li class="ev">
+    <li class="ev" data-reveal style="--d:55ms">
       <div class="ev-head">
-        <span class="ev-who" style="color:#b4576f">阿澈</span>
+        <span class="ev-who" style="color:#e1487f">阿澈</span>
         <span class="ev-when">11-07 11:00</span>
       </div>
       <blockquote>没有 就是忙</blockquote>
       <span class="ev-reason">TA 最慢的一次回复（间隔 15.0 小时）</span>
     </li>
-    <li class="ev">
+    <li class="ev" data-reveal style="--d:110ms">
       <div class="ev-head">
-        <span class="ev-who" style="color:#b4576f">阿澈</span>
+        <span class="ev-who" style="color:#e1487f">阿澈</span>
         <span class="ev-when">11-05 22:35</span>
       </div>
       <blockquote>谢谢</blockquote>
       <span class="ev-reason">这一轮由 TA 收尾</span>
     </li>
-    <li class="ev">
+    <li class="ev" data-reveal style="--d:165ms">
       <div class="ev-head">
-        <span class="ev-who" style="color:#4f7fa0">我</span>
+        <span class="ev-who" style="color:#8a4fd8">我</span>
         <span class="ev-when">11-06 20:01</span>
       </div>
       <blockquote>你是不是不想见我</blockquote>
       <span class="ev-reason">这一轮由你收尾</span>
     </li>
-    <li class="ev">
+    <li class="ev" data-reveal style="--d:220ms">
       <div class="ev-head">
-        <span class="ev-who" style="color:#4f7fa0">我</span>
+        <span class="ev-who" style="color:#8a4fd8">我</span>
         <span class="ev-when">11-07 11:01</span>
       </div>
       <blockquote>好吧</blockquote>
@@ -1160,7 +1343,7 @@ footer b { color: var(--ink-soft); }
 </section>
     
 <section class="section" id="score">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">13</span>分数是怎么算出来的</h2>
     <p class="section-desc">完整权重与贡献分账</p>
   </div>
@@ -1178,7 +1361,7 @@ footer b { color: var(--ink-soft); }
         下面是 阿澈 视角的完整分账。
       </p>
       <div class="bds">
-    <div class="bd">
+    <div class="bd" data-reveal>
       <h4>阿澈 的投入度（决定上面的总分） <span class="bd-total">52.8</span></h4>
       <table>
         <thead><tr><th>维度</th><th class="num">维度分</th><th class="num">权重</th><th class="num">贡献</th></tr></thead>
@@ -1186,7 +1369,7 @@ footer b { color: var(--ink-soft); }
       </table>
       <p class="tiny faint">已剔除（无信息，权重已重新归一化）：平均字数与投入度、称呼与表情使用、情绪倾向随时间变化、深夜及特定时段活跃度</p>
     </div>
-    <div class="bd">
+    <div class="bd" data-reveal style="--d:80ms">
       <h4>我 的投入度 <span class="bd-total">48.1</span></h4>
       <table>
         <thead><tr><th>维度</th><th class="num">维度分</th><th class="num">权重</th><th class="num">贡献</th></tr></thead>
@@ -1194,7 +1377,7 @@ footer b { color: var(--ink-soft); }
       </table>
       <p class="tiny faint">已剔除（无信息，权重已重新归一化）：情绪倾向随时间变化</p>
     </div>
-    <div class="bd">
+    <div class="bd" data-reveal style="--d:160ms">
       <h4>双向互动综合 <span class="bd-total">50.1</span></h4>
       <table>
         <thead><tr><th>维度</th><th class="num">维度分</th><th class="num">权重</th><th class="num">贡献</th></tr></thead>
@@ -1207,7 +1390,7 @@ footer b { color: var(--ink-soft); }
 
     
 <section class="section" id="notes">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">14</span>说明与免责</h2>
     <p class="section-desc">数据问题、来源与免责声明</p>
   </div>
@@ -1219,11 +1402,22 @@ footer b { color: var(--ink-soft); }
 </section>
 
     
-<section class="comfort">
+<section class="comfort" id="closing">
   <div class="comfort-inner">
     <p class="kicker">写在这里的话</p>
     <h2>你没有做错什么</h2>
     <p>数据里有很多你主动的痕迹：你在开口，你在追问，你在收尾之后还想再说一句。而回应在变薄。</p><p>我想说的是——这不是因为你不够好，也不是因为你不够努力。感情里的热度是会变的，它不总是谁的错，有时候只是两个人走的节奏不一样了。</p><p>你可以再试一次，认真地、不指责地把你的感受说出来。如果他接住了，那是好事；如果没有，那你至少知道了答案，而答案比反复猜测要轻得多。</p><p>无论结果如何，你值得一个会主动想起你的人。这一点不因为他的选择而改变。</p>
+    
+    <div class="insight">
+      <div class="insight-head">
+        <span class="insight-badge">说给你听</span>
+        <span class="insight-from tiny">只属于这份记录的一句话</span>
+      </div>
+      <p class="insight-lead">你们冷过 3 次超过一天的沉默，每一次都是阿澈先开口的</p>
+      <p class="insight-support tiny">他打破 3 / 3 次 · 最长一次 1.5 天</p>
+      <p class="insight-closing">先低头的人不一定更在乎，但一定更不愿意失去这段关系。</p>
+      <p class="insight-based tiny">依据：打破僵局次数</p>
+    </div>
   </div>
 </section>
 
@@ -1235,7 +1429,7 @@ footer b { color: var(--ink-soft); }
       <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
       手机没电，或者他本来就不太会说话。</p>
       
-      <p>生成时间：2026-10-06 16:25 · loves-me-not v0.1.0</p>
+      <p>生成时间：2026-10-06 16:56 · loves-me-not v0.1.0</p>
     </footer>
 
   </main>
@@ -1243,46 +1437,179 @@ footer b { color: var(--ink-soft); }
 
 <script>
 (function () {
-  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
-  if (!links.length || !('IntersectionObserver' in window)) return;
-  var byId = {};
-  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
-  var sections = Object.keys(byId).map(function (id) { return document.getElementById(id); })
-                       .filter(Boolean);
-  if (!sections.length) return;
+  var root = document.documentElement;
+  root.classList.remove('no-motion');
+  var reduce = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { root.classList.add('no-motion'); }
 
+  /* ---------- 1. 章节导航高亮 ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var byId = {};
+  links.forEach(function (a) {
+    var href = a.getAttribute('href') || '';
+    if (href.charAt(0) === '#') byId[href.slice(1)] = a;
+  });
+  var sections = Object.keys(byId)
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
   var visible = {};
-  function refresh() {
+
+  function highlight() {
+    if (!sections.length) return;
     var best = null, bestTop = Infinity;
     sections.forEach(function (s) {
       if (!visible[s.id]) return;
       var top = Math.abs(s.getBoundingClientRect().top);
       if (top < bestTop) { bestTop = top; best = s.id; }
     });
-    // 没有任何区块进入视野时，退化为「最后一个已滚过的区块」
     if (!best) {
-      var y = window.scrollY + 120;
+      var y = window.scrollY + 140;
       sections.forEach(function (s) { if (s.offsetTop <= y) best = s.id; });
     }
     if (!best) return;
-    links.forEach(function (a) {
-      a.classList.toggle('is-active', a === byId[best]);
-    });
+    links.forEach(function (a) { a.classList.toggle('is-active', a === byId[best]); });
     var active = byId[best];
+    // 移动端把当前项滚进标签栏视野
     if (active && active.scrollIntoView && window.innerWidth < 940) {
       active.scrollIntoView({ block: 'nearest', inline: 'center' });
     }
   }
 
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
-    refresh();
-  }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+  if (sections.length && 'IntersectionObserver' in window) {
+    var navIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      highlight();
+    }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+    sections.forEach(function (s) { navIo.observe(s); });
+    window.addEventListener('scroll', highlight, { passive: true });
+    window.addEventListener('resize', highlight);
+    highlight();
+  }
 
-  sections.forEach(function (s) { io.observe(s); });
-  window.addEventListener('scroll', refresh, { passive: true });
-  window.addEventListener('resize', refresh);
-  refresh();
+  /* ---------- 2. 入场动效 ---------- */
+
+  // 折线：先量出真实长度写进 --len，否则 dasharray 对不上会「画一半」
+  function measureLines() {
+    Array.prototype.forEach.call(document.querySelectorAll('svg.linechart path'), function (p) {
+      try {
+        var len = p.getTotalLength();
+        if (len && isFinite(len)) p.style.setProperty('--len', len.toFixed(1));
+      } catch (e) { /* 拿不到长度就不做描边动画 */ }
+    });
+  }
+
+  // 数字滚动：只在元素首次进入视野时跑一次
+  function countUp(el) {
+    var target = parseFloat(el.getAttribute('data-count'));
+    if (!isFinite(target)) return;
+    var dur = 900, t0 = null;
+    function step(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      // easeOutCubic：起步快、收尾稳
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = String(Math.round(target * eased));
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = String(Math.round(target));
+    }
+    requestAnimationFrame(step);
+  }
+
+  var revealTargets = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+  var gaugeEl = document.querySelector('.gauge-num');
+
+  // 数字滚动：只跑一次；元素自身带 data-count，或它内部有 data-count
+  function runCounts(el) {
+    var list = [];
+    if (el.hasAttribute && el.hasAttribute('data-count')) list.push(el);
+    Array.prototype.forEach.call(el.querySelectorAll('[data-count]'), function (c) {
+      list.push(c);
+    });
+    list.forEach(function (c) {
+      if (c.dataset.done) return;
+      c.dataset.done = '1';
+      // 减少动效时数字直接落定，但仍然要执行——否则它会停在 0
+      if (reduce) {
+        c.textContent = String(Math.round(parseFloat(c.getAttribute('data-count'))));
+      } else {
+        countUp(c);
+      }
+    });
+  }
+
+  function showNow(el) {
+    if (el.classList.contains('is-in')) return;
+    // 先清掉内联 opacity（部分区块用它参与卡片错峰），再打标记触发过渡
+    el.style.removeProperty('opacity');
+    el.classList.add('is-in');
+    // 进度条从 0 长出：先把真实宽度记下来、压到 0，
+    // 下一帧再还原，这样浏览器才有机会做过渡。
+    // 用显式调用而不是纯 CSS，是为了「没有 JS」时进度条依然是满的。
+    var bars = el.querySelectorAll('.bar-fill, .mini-fill, .persona-bar > div, .q-bar > div');
+    if (bars.length && !reduce) {
+      Array.prototype.forEach.call(bars, function (b) {
+        if (b.dataset.w === undefined) b.dataset.w = b.style.width || '0%';
+        b.style.width = '0%';
+      });
+      window.requestAnimationFrame(function () {
+        Array.prototype.forEach.call(bars, function (b) { b.style.width = b.dataset.w; });
+      });
+    }
+    runCounts(el);
+  }
+
+  // 揭示逻辑刻意不依赖 IntersectionObserver：
+  // 快速滚动、无头浏览器、部分内置浏览器里它会漏触发，
+  // 而漏触发的后果是内容永久不可见——代价太大。
+  // 这里用最朴素的「算一下在不在视口里」，滚动/缩放/加载后都跑一遍。
+  var ticking = false;
+
+  function inViewport(el) {
+    var r = el.getBoundingClientRect();
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    return r.top < vh - 40 && r.bottom > -40;
+  }
+
+  function refresh() {
+    ticking = false;
+    for (var i = 0; i < revealTargets.length; i++) {
+      var el = revealTargets[i];
+      if (el.classList.contains('is-in')) continue;
+      if (inViewport(el)) showNow(el);
+    }
+    measureLines();
+  }
+
+  function requestRefresh() {
+    if (ticking) return;
+    ticking = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(refresh);
+    else window.setTimeout(refresh, 16);
+  }
+
+  measureLines();
+  refresh();   // 首屏立刻处理
+
+  window.addEventListener('scroll', requestRefresh, { passive: true });
+  window.addEventListener('resize', requestRefresh);
+  window.addEventListener('load', requestRefresh);
+
+  // 仪表盘在首屏，一定可见：一进页面就滚动起来
+  if (gaugeEl) runCounts(gaugeEl);
+
+  // 兜底：布局变化后再补两次
+  window.setTimeout(refresh, 180);
+  window.setTimeout(refresh, 700);
+
+  // 最后一道保险：无论前面发生什么，3 秒后把还没揭示的一律显示出来。
+  // 宁可少一个动画，也不能让读者看到空白。
+  window.setTimeout(function () {
+    for (var i = 0; i < revealTargets.length; i++) {
+      var el = revealTargets[i];
+      if (!el.classList.contains('is-in')) el.classList.add('is-in');
+    }
+  }, 3000);
 })();
 </script>
 

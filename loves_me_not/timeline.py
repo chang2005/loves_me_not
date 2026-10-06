@@ -35,6 +35,7 @@ from .insights import (
     TopicWord,
     _fmt_duration,
     _reply_delays,
+    is_late_night_hour,
 )
 from .parser import Message, has_emoji, looks_like_question
 
@@ -407,6 +408,264 @@ def build_timeline(messages: Sequence[Message], me: str, peer: str,
 
     nodes.sort(key=lambda n: (n.when or datetime.min))
     return nodes
+
+
+@dataclass
+class PersonalNote:
+    """结尾的个性化文案。
+
+    与 :data:`loves_me_not.scoring.COMFORT` 的分工：
+
+    * ``COMFORT`` 是**按等级**选的通用安慰/鼓励段落（六个档位各一段）；
+    * ``PersonalNote`` 是从**这段记录的真实数据**里长出来的一两句专属话，
+      所以它只在这份报告里成立——换一份记录就会不一样。
+    """
+
+    #: 主句（观察到的具体事实）
+    headline: str
+    #: 支撑数字，例如 "23:00 之后 6 条"
+    support: str
+    #: 收尾的一句（夸赞或鼓励，取决于整体倾向）
+    closing: str
+    #: 语气：warm（夸赞）/ gentle（温和鼓励）
+    tone: str
+    #: 这句话用到了哪些指标（便于自查，也让用户知道它从哪来）
+    based_on: list[str] = field(default_factory=list)
+
+
+#: 时间段的自然语言说法
+_DAY_PART = (
+    (5, "凌晨"), (8, "清早"), (11, "上午"), (13, "中午"),
+    (17, "下午"), (19, "傍晚"), (23, "晚上"), (24, "深夜"),
+)
+
+
+def _day_part(hour: int) -> str:
+    for end, name in _DAY_PART:
+        if hour < end:
+            return name
+    return "深夜"
+
+
+def _pick_best(cands: list[tuple[float, PersonalNote]]) -> PersonalNote | None:
+    """按「独特性」排序取第一条——越少见的观察越值得说。"""
+    if not cands:
+        return None
+    cands.sort(key=lambda c: -c[0])
+    return cands[0][1]
+
+
+def build_personal_note(messages: Sequence[Message], me: str, peer: str,
+                        sessions: Sequence[Session], silences: Sequence[SilenceGap],
+                        footprint: Footprint, peer_score: float | None) -> PersonalNote | None:
+    """从真实数据里挑一条最贴合这段关系的专属文案。
+
+    设计原则：
+
+    1. **先算再写**。每个候选都建立在已经算出来的数字上，
+       没有任何凭空生成的形容词；
+    2. **挑最独特的**。候选用「独特性」打分（偏离常规的程度），
+       取最高分那条，这样不同记录才会得到不同的话；
+    3. **看人下菜**。整体信号偏积极时落点是夸赞，偏弱时落点是温和鼓励——
+       但两种都不会指责，也不会替用户做决定。
+
+    挑不出足够独特的观察时返回 ``None``，由调用方退回到分档通用文案。
+    """
+    real = [m for m in messages if not m.is_system and m.timestamp is not None]
+    peer_msgs = [m for m in real if m.speaker == peer]
+    if len(real) < 12 or not peer_msgs:
+        return None
+
+    cands: list[tuple[float, PersonalNote]] = []
+    average_weather = peer_score is not None and peer_score >= 55
+
+    # ---- 1. 深夜还在聊 ----
+    late = [m for m in peer_msgs if is_late_night_hour(m.timestamp.hour)]  # type: ignore[union-attr]
+    if len(late) >= 3:
+        hours = sorted({m.timestamp.hour for m in late})  # type: ignore[union-attr]
+        peak_hour = hours[-1] if hours[-1] >= 23 else hours[0]
+        cands.append((0.55 + min(0.35, len(late) / 25), PersonalNote(
+            headline=f"{_day_part(peak_hour)}还在回你消息——{peak_hour:02d} 点前后，"
+                     f"{peer}一共说了 {len(late)} 条",
+            support=f"{len(late)} 条在深夜时段",
+            closing=("人在最疲惫的时候还愿意回话，通常说明你在他的优先級里排得不低。"
+                     if average_weather else
+                     "只是深夜的消息不一定都是想念，也可能只是睡不着——别只凭这一条下判断。"),
+            tone="warm" if average_weather else "gentle",
+            based_on=["深夜发消息次数"],
+        )))
+
+    # ---- 2. 一次聊了很久 ----
+    if footprint.longest_session and footprint.longest_session.duration_minutes >= 25:
+        s = footprint.longest_session
+        mins = s.duration_minutes
+        share = s.speaker_counts.get(peer, 0) / max(1, s.count)
+        cands.append((0.45 + min(0.4, mins / 240), PersonalNote(
+            headline=f"你们最长的一次从 {s.start:%H:%M} 聊到 {s.end:%H:%M}，"
+                     f"整整 {_fmt_duration(mins * 60)}没有停",
+            support=f"{s.count} 条消息，{peer} 占 {share * 100:.0f}%",
+            closing=("能聊这么久，说明在那段时间里，你们是真的对彼此有耐心。"
+                     if average_weather else
+                     "聊得久是好事。如果最近变短了，也许只是两个人都累了，不必立刻往坏处想。"),
+            tone="warm" if average_weather else "gentle",
+            based_on=["最长的一次聊天"],
+        )))
+
+    # ---- 3. 一个月里聊得特别密 ----
+    if footprint.best_month and len(footprint.months) >= 2:
+        m = footprint.best_month
+        total = sum(x.count for x in footprint.months)
+        share = m.count / max(1, total)
+        if share >= 0.3 and m.count >= 10:
+            cands.append((0.35 + share, PersonalNote(
+                headline=f"{m.pretty}是你们的峰值——那个月 {m.active_days} 天里聊了 {m.count} 条，"
+                         f"占了全部记录的 {share * 100:.0f}%",
+                support=f"跨 {len(footprint.months)} 个月",
+                closing=("关系里有过这样的月份，本身就是证据——证明你们曾经靠得那么近。"
+                         if average_weather else
+                         "那种热度是真实存在过的。它不是错觉，也不是你一个人在使劲。"),
+                tone="warm" if average_weather else "gentle",
+                based_on=["聊得最多的月份"],
+            )))
+
+    # ---- 4. 回得快 ----
+    delays = _reply_delays(messages, peer)
+    if len(delays) >= 12:
+        med = sorted(delays)[len(delays) // 2]
+        fast = sum(1 for d in delays if d <= 300) / len(delays)
+        if med <= 600 and fast >= 0.5:
+            cands.append((0.4 + fast * 0.5, PersonalNote(
+                headline=f"{peer}回你消息的中位时间是 {_fmt_duration(med)}，"
+                         f"{fast * 100:.0f}% 的回复在 5 分钟内",
+                support=f"基于 {len(delays)} 次回复",
+                closing="回复速度不是爱的全部，但它至少说明：你发的消息，他看见了就想回。",
+                tone="warm",
+                based_on=["回复速度"],
+            )))
+        elif med >= 7200:
+            cands.append((0.4 + min(0.4, med / 86400), PersonalNote(
+                headline=f"{peer}回你消息的中位时间是 {_fmt_duration(med)}——"
+                         f"你有 {len(delays)} 次是在等一条回复",
+                support=f"{fast * 100:.0f}% 的回复在 5 分钟内",
+                closing=("等消息是很消耗人的。如果这让你反复点开对话框，"
+                         "那不是你太敏感，是这段关系给你的确定感不够。"),
+                tone="gentle",
+                based_on=["回复速度"],
+            )))
+
+    # ---- 5. 冷战之后是他先开口 ----
+    all_big = [g for g in silences if g.length >= timedelta(hours=24) and g.broken_by]
+    big = [g for g in all_big if g.broken_by == peer]
+    if len(big) >= 2 and all_big:
+        share = len(big) / len(all_big)
+        longest = max(big, key=lambda g: g.length)
+        # 措辞必须与事实一致：「全都是他」和「他占一部分」是不同的说法
+        if share >= 0.85:
+            lead = f"你们冷过 {len(all_big)} 次超过一天的沉默，每一次都是{peer}先开口的"
+        else:
+            lead = (f"你们冷过 {len(all_big)} 次超过一天的沉默，"
+                    f"其中 {len(big)} 次是{peer}先开口的")
+        cands.append((0.5 + min(0.35, len(big) / 10), PersonalNote(
+            headline=lead,
+            support=f"他打破 {len(big)} / {len(all_big)} 次 · 最长一次 {_fmt_duration(longest.length)}",
+            closing=("先低头的人不一定更在乎，但一定更不愿意失去这段关系。"
+                     if share >= 0.5 else
+                     "先低头需要勇气。他愿意试，说明这段关系对他不是可有可无。"),
+            tone="warm",
+            based_on=["打破僵局次数"],
+        )))
+
+    # ---- 6. 某些日子被特意记住了 ----
+    special = _special_days(real, peer)
+    if special:
+        label, when, quote = special
+        cands.append((0.6, PersonalNote(
+            headline=f"{when} 那天，{peer}特意为「{label}」发了消息",
+            support=f"「{quote}」",
+            closing="节日祝福可以群发，但记得住并单独发给你，是另一回事。",
+            tone="warm",
+            based_on=["关键节点"],
+        )))
+
+    # ---- 7. 总是他先找你 ----
+    if sessions:
+        peer_first = sum(1 for s in sessions if s.messages and s.messages[0].speaker == peer)
+        share = peer_first / len(sessions)
+        if share >= 0.6 and len(sessions) >= 8:
+            cands.append((0.35 + share * 0.4, PersonalNote(
+                headline=f"{len(sessions)} 段对话里，有 {peer_first} 段是{peer}先来找你的",
+                support=f"占 {share * 100:.0f}%",
+                closing="「先开口」是最朴素也最难的在意。他愿意一次次当那个先说话的人。",
+                tone="warm",
+                based_on=["主动发起对话次数"],
+            )))
+        elif share <= 0.25 and len(sessions) >= 8:
+            cands.append((0.45 + (0.5 - share), PersonalNote(
+                headline=f"{len(sessions)} 段对话里，只有 {peer_first} 段是{peer}先开口的",
+                support=f"其余 {len(sessions) - peer_first} 段都是你先找他",
+                closing=("一直当那个先说话的人会很累。你主动没有错，"
+                         "但一段关系不该永远由同一个人开口。"),
+                tone="gentle",
+                based_on=["主动发起对话次数"],
+            )))
+
+    # ---- 8. 有过很暖的一天 ----
+    if footprint.days:
+        by_day: dict[str, list[Message]] = {}
+        for m in real:
+            assert m.timestamp is not None
+            by_day.setdefault(m.timestamp.strftime("%Y-%m-%d"), []).append(m)
+        best_key, best_val = None, 0.0
+        for key, msgs in by_day.items():
+            vals = [message_sentiment_local(m.text) for m in msgs if m.text.strip()]
+            if len(vals) >= 5:
+                v = sum(vals) / len(vals)
+                if v > best_val:
+                    best_key, best_val = key, v
+        if best_key and best_val >= 0.25:
+            cands.append((0.3 + min(0.5, best_val), PersonalNote(
+                headline=f"{best_key} 是情绪最暖的一天，整天的语气都往上走",
+                support=f"当日情绪均分 +{best_val:.2f}",
+                closing="好日子是关系的底子。哪怕后来有起伏，那一天也是真的。",
+                tone="warm",
+                based_on=["情绪倾向随时间变化"],
+            )))
+
+    return _pick_best(cands)
+
+
+def message_sentiment_local(text: str) -> float:
+    """本地情感打分（延迟导入 metrics，避免模块循环依赖）。"""
+    from .metrics import message_sentiment
+    return message_sentiment(text)
+
+
+#: 值得被单独记住的日子（关键词 → 展示名）
+_SPECIAL_DAYS = (
+    ("生日快乐", "生日"),
+    ("生日快乐呀", "生日"),
+    ("纪念日", "纪念日"),
+    ("在一起", "在一起的日子"),
+    ("跨年", "跨年"),
+    ("新年快乐", "新年"),
+    ("情人节", "情人节"),
+    ("中秋节", "中秋"),
+    ("端午", "端午"),
+    ("圣诞", "圣诞"),
+    ("结婚纪念", "结婚纪念日"),
+)
+
+
+def _special_days(messages: Sequence[Message], peer: str) -> tuple[str, str, str] | None:
+    """找出对方特意发了节日/纪念日祝福的那一天。"""
+    for m in messages:
+        if m.speaker != peer or not m.timestamp or not m.text:
+            continue
+        for kw, label in _SPECIAL_DAYS:
+            if kw in m.text:
+                when = m.timestamp.strftime("%Y-%m-%d")
+                return label, when, _short(m.text, 18)
+    return None
 
 
 def _short(text: str, limit: int = 26) -> str:

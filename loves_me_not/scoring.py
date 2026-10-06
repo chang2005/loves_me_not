@@ -80,24 +80,26 @@ class Tier:
 
 
 TIERS: tuple[Tier, ...] = (
+    # 颜色走「品红 → 珊瑚 → 紫 → 灰紫」这条链：分数越高越暖、越饱和，
+    # 越低越冷、越接近中性灰，让结论的强弱一眼可辨。
     Tier("hot", 85, 100, "还是很爱你", "主动、秒回、话题不断，这段关系眼下是热的。",
-         "#e0577f", "别把这份热当成理所当然——关系是两个人一起维护的，你也主动一点。"),
+         "#e1487f", "别把这份热当成理所当然——关系是两个人一起维护的，你也主动一点。"),
     Tier("warm", 70, 84, "热度在线", "整体稳定，偶尔降温，但没有脱轨的迹象。",
-         "#e8846b", "多留意那些「回得慢了一点」的时刻，及时说开，比憋着好。"),
+         "#f2764a", "多留意那些「回得慢了一点」的时刻，及时说开，比憋着好。"),
     Tier("lukewarm", 55, 69, "有点平淡了", "人还在，只是节奏慢下来了——很多长期关系都会走到这里。",
-         "#d9a441", "平淡不等于结束。找一个两个人都松的晚上，认真聊一次。"),
+         "#e0a12e", "平淡不等于结束。找一个两个人都松的晚上，认真聊一次。"),
     Tier("cooling", 40, 54, "已经在变淡", "多项指标都偏向单方面：你在推进，他在应付。",
-         "#8a9bb8", "这不是你的错，也不是你不值得。但你值得一个会主动找你的人。"),
+         "#a855c7", "这不是你的错，也不是你不值得。但你值得一个会主动找你的人。"),
     Tier("cold", 20, 39, "基本没戏", "回应稀薄、长期单方面投入，数据上已经很难找出热度。",
-         "#7d8aa3", "承认这一点很疼，但看清它是往前走的开始。"),
+         "#7b6ba8", "承认这一点很疼，但看清它是往前走的开始。"),
     Tier("frozen", 0, 19, "几乎可以放手了", "从记录看，这段关系基本已经停摆。",
-         "#8b8b93", "你可以停在这里了。不是放弃他，是把自己捡回来。"),
+         "#8d8598", "你可以停在这里了。不是放弃他，是把自己捡回来。"),
 )
 
 TIER_UNCLEAR = Tier(
     "unclear", -1, -1, "样本不足，无法给结论",
     "能读到的消息太少，任何分数都是噪声——这里不编结论。",
-    "#a8a8b3",
+    "#a49cae",
     "如果真的想知道，试着导出更长时间、更完整的记录再来一次；"
     "或者干脆别测了，直接问他一句。",
 )
@@ -522,6 +524,30 @@ def score(analysis: Analysis) -> ScoreResult:
             break
 
     c_title, c_body = COMFORT.get(tier.key, COMFORT["unclear"])
+
+    # 个性化收尾文案：依赖最终得分（决定夸赞还是鼓励），所以放在这里生成。
+    # 挑不出足够独特的观察时保持 None，报告会只展示分档通用文案。
+    personal_note = None
+    try:
+        from . import timeline as _timeline
+        personal_note = _timeline.build_personal_note(
+            analysis.raw_messages,
+            analysis.me,
+            analysis.peer,
+            analysis.sessions,
+            analysis.silences,
+            analysis.footprint,
+            quant_score if quant_score is not None
+            else (base_score if base_score is not None else None),
+        )
+    except Exception as exc:
+        # 个性化文案失败不该拖垮整份报告，但**也不能悄悄吞掉**——
+        # 之前这里裸 except 掩盖过一次 NameError。改成留下可查的痕迹。
+        analysis.caveats.append(
+            f"个性化收尾文案生成失败（{type(exc).__name__}: {exc}），已改用通用文案。"
+        )
+        personal_note = None
+    analysis.personal_note = personal_note
 
     return ScoreResult(
         total=total,

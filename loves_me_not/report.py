@@ -34,6 +34,26 @@ def esc(text: object) -> str:
     return html.escape(str(text if text is not None else ""), quote=True)
 
 
+def _reveal(delay_ms: int = 0, *, count: float | None = None) -> str:
+    """生成入场动效属性。
+
+    ``data-reveal`` 由页面脚本用 IntersectionObserver 加上 ``.is-in``；
+    ``--d`` 控制错峰延迟（卡片依次浮现的关键）；
+    ``data-count`` 让元素内的数字从 0 滚到目标值。
+    """
+    attrs = ' data-reveal'
+    if delay_ms:
+        attrs += f' style="--d:{delay_ms}ms"'
+    if count is not None:
+        attrs += f' data-count="{count}"'
+    return attrs
+
+
+def _stagger(index: int, step: int = 70, cap: int = 700) -> int:
+    """按序号算错峰延迟，并设上限——否则长列表最后几项要等很久才出现。"""
+    return min(index * step, cap)
+
+
 def _pct(x: float) -> str:
     return f"{x * 100:.1f}%"
 
@@ -172,7 +192,7 @@ def render_gauge(score: int, tier_color: str, label: str) -> str:
 
   <text x="{size / 2}" y="{size / 2 - 2}" text-anchor="middle"
         dominant-baseline="middle" class="gauge-num"
-        fill="{PALETTE['ink']}">{score}</text>
+        fill="{PALETTE['ink']}" data-count="{score}">{score}</text>
   <text x="{size / 2}" y="{size / 2 + 40}" text-anchor="middle"
         dominant-baseline="middle" class="gauge-denom"
         fill="{PALETTE['ink_faint']}">/ 100</text>
@@ -373,7 +393,7 @@ def _line_chart(
     )
 
     return f"""
-<div class="chart-card">
+<div class="chart-card" data-reveal>
   <h4>{esc(title)}</h4>
   <p class="tiny faint">{esc(subtitle)}</p>
   <svg viewBox="0 0 {width} {height}" class="linechart" role="img" aria-label="{esc(title)}">
@@ -524,7 +544,7 @@ def _fmt_span(analysis: Analysis) -> str:
 
 def render_dimensions(analysis: Analysis) -> str:
     cards = []
-    for d in analysis.dimensions.values():
+    for i, d in enumerate(analysis.dimensions.values()):
         chips = []
         for s in d.subs:
             cls = "chip" if s.score is not None else "chip chip-na"
@@ -549,7 +569,7 @@ def render_dimensions(analysis: Analysis) -> str:
         if not d.available:
             na_note = '<p class="tiny" style="color:%s">这一项样本不足，<b>没有参与打分</b>。</p>' % PALETTE["warn"]
         cards.append(f"""
-  <article class="dim-card{'' if d.available else ' dim-na'}">
+  <article class="dim-card{'' if d.available else ' dim-na'}"{_reveal(_stagger(i, 60))}>
     <h3>{esc(d.label)}</h3>
     {na_note}
     <p class="dim-summary">{esc(d.summary)}</p>
@@ -561,9 +581,10 @@ def render_dimensions(analysis: Analysis) -> str:
 
 def render_cards(analysis: Analysis) -> str:
     out = []
-    for title, value, sub in analysis.cards:
+    for i, (title, value, sub) in enumerate(analysis.cards):
         out.append(
-            f'<div class="stat"><span class="stat-title">{esc(title)}</span>'
+            f'<div class="stat"{_reveal(_stagger(i))}>'
+            f'<span class="stat-title">{esc(title)}</span>'
             f'<span class="stat-value">{esc(value)}</span>'
             f'<span class="stat-sub">{esc(sub)}</span></div>'
         )
@@ -575,11 +596,11 @@ def render_evidence(result: ScoreResult, analysis: Analysis) -> str:
         return ('<p class="faint">这份记录里没有挑出足够清晰的原话片段。'
                 "结论只基于统计量，请谨慎参考。</p>")
     items = []
-    for ev in result.evidence:
+    for i, ev in enumerate(result.evidence):
         color = PALETTE["peer"] if ev.speaker == analysis.peer else PALETTE["me"]
         when = ev.when()
         items.append(f"""
-    <li class="ev">
+    <li class="ev"{_reveal(_stagger(i, 55))}>
       <div class="ev-head">
         <span class="ev-who" style="color:{color}">{esc(ev.speaker)}</span>
         <span class="ev-when">{esc(when)}</span>
@@ -591,21 +612,25 @@ def render_evidence(result: ScoreResult, analysis: Analysis) -> str:
 
 
 def render_winners(result: ScoreResult) -> str:
-    def block(title: str, rows: Sequence[tuple[str, float, float]], color: str, empty: str) -> str:
+    def block(title: str, rows: Sequence[tuple[str, float, float]], color: str,
+              empty: str, delay: int) -> str:
         if not rows:
-            return f'<div class="win"><h4>{esc(title)}</h4><p class="faint tiny">{esc(empty)}</p></div>'
+            return (f'<div class="win"{_reveal(delay)}><h4>{esc(title)}</h4>'
+                    f'<p class="faint tiny">{esc(empty)}</p></div>')
         lis = "".join(
             f'<li><span>{esc(label)}</span>'
             f'<span class="win-score" style="color:{color}">{score * 100:.0f}</span>'
             f'<span class="tiny faint">权重 {_pct(w)}</span></li>'
             for label, score, w in rows
         )
-        return f'<div class="win"><h4>{esc(title)}</h4><ul>{lis}</ul></div>'
+        return f'<div class="win"{_reveal(delay)}><h4>{esc(title)}</h4><ul>{lis}</ul></div>'
 
     return (
         '<div class="wins">'
-        + block("主要加分项", result.top_positive, PALETTE["good"], "没有明显高于基准的维度。")
-        + block("主要拖后腿", result.top_negative, PALETTE["warn"], "没有明显低于基准的维度。")
+        + block("主要加分项", result.top_positive, PALETTE["good"],
+                "没有明显高于基准的维度。", 0)
+        + block("主要拖后腿", result.top_negative, PALETTE["warn"],
+                "没有明显低于基准的维度。", 90)
         + "</div>"
     )
 
@@ -614,9 +639,10 @@ def render_breakdown(result: ScoreResult, analysis: Analysis) -> str:
     """把「分数怎么来的」摊开给人看。"""
     labels = {k: d.label for k, d in analysis.dimensions.items()}
 
-    def table(part, title: str) -> str:
+    def table(part, title: str, delay: int = 0) -> str:
         if part.score is None:
-            return f'<div class="bd"><h4>{esc(title)}</h4><p class="faint tiny">无可用维度。</p></div>'
+            return (f'<div class="bd"{_reveal(delay)}><h4>{esc(title)}</h4>'
+                    f'<p class="faint tiny">无可用维度。</p></div>')
         rows = []
         for k, w in sorted(part.used.items(), key=lambda kv: -kv[1]):
             # 用打分时真正采用的分数，而不是事后反推——
@@ -635,7 +661,7 @@ def render_breakdown(result: ScoreResult, analysis: Analysis) -> str:
             names = "、".join(labels.get(k, k) for k in part.skipped)
             skipped = (f'<p class="tiny faint">已剔除（无信息，权重已重新归一化）：{esc(names)}</p>')
         return f"""
-    <div class="bd">
+    <div class="bd"{_reveal(delay)}>
       <h4>{esc(title)} <span class="bd-total">{part.score:.1f}</span></h4>
       <table>
         <thead><tr><th>维度</th><th class="num">维度分</th><th class="num">权重</th><th class="num">贡献</th></tr></thead>
@@ -646,9 +672,9 @@ def render_breakdown(result: ScoreResult, analysis: Analysis) -> str:
 
     return (
         '<div class="bds">'
-        + table(result.peer, f"{analysis.peer} 的投入度（决定上面的总分）")
-        + table(result.me, f"{analysis.me} 的投入度")
-        + table(result.pair, "双向互动综合")
+        + table(result.peer, f"{analysis.peer} 的投入度（决定上面的总分）", 0)
+        + table(result.me, f"{analysis.me} 的投入度", 80)
+        + table(result.pair, "双向互动综合", 160)
         + "</div>"
     )
 
@@ -664,16 +690,36 @@ def render_caveats(analysis: Analysis, conv_report=None) -> str:
     return f'<ul class="caveats">{lis}</ul>'
 
 
-def render_comfort(result: ScoreResult) -> str:
+def render_comfort(result: ScoreResult, analysis: Analysis | None = None) -> str:
+    """结尾：分档通用文案 + （如果有）从真实数据里长出来的专属文案。"""
     paragraphs = "".join(
         f"<p>{esc(p.strip())}</p>" for p in result.comfort_body.split("\n\n") if p.strip()
     )
+
+    personal = getattr(analysis, "personal_note", None) if analysis is not None else None
+    personal_html = ""
+    if personal is not None:
+        tone_label = "说给你听" if personal.tone == "warm" else "也想提醒你"
+        based = "、".join(personal.based_on)
+        personal_html = f"""
+    <div class="insight">
+      <div class="insight-head">
+        <span class="insight-badge">{esc(tone_label)}</span>
+        <span class="insight-from tiny">只属于这份记录的一句话</span>
+      </div>
+      <p class="insight-lead">{esc(personal.headline)}</p>
+      <p class="insight-support tiny">{esc(personal.support)}</p>
+      <p class="insight-closing">{esc(personal.closing)}</p>
+      {f'<p class="insight-based tiny">依据：{esc(based)}</p>' if based else ''}
+    </div>"""
+
     return f"""
-<section class="comfort">
+<section class="comfort" id="closing">
   <div class="comfort-inner">
     <p class="kicker">写在这里的话</p>
     <h2>{esc(result.comfort_title)}</h2>
     {paragraphs}
+    {personal_html}
   </div>
 </section>"""
 
@@ -721,7 +767,7 @@ def render_quantifiers(analysis: Analysis) -> str:
             bar = (f'<div class="q-bar"><div style="width:{max(2.0, m.score * 100):.0f}%;'
                    f'background:{hue}"></div></div>')
         rows.append(f"""
-    <div class="q-item">
+    <div class="q-item" data-reveal>
       <div class="q-line">
         <span class="q-label">{esc(m.label)}</span>
         <span class="q-value{' faint' if m.score is None else ''}">{esc(m.display)}</span>
@@ -881,15 +927,15 @@ def render_timeline(analysis: Analysis) -> str:
         return '<p class="faint">这份记录里没有挑出足够的关键节点。</p>'
 
     items = []
-    for n in nodes:
+    for i, n in enumerate(nodes):
         color = _TAG_COLOR.get(n.kind, V.PALETTE["ink_soft"])
         when = f"{n.when:%Y-%m-%d}" if n.when else "—"
         if n.when and n.kind in ("longest_session",):
             when = f"{n.when:%Y-%m-%d %H:%M}"
         items.append(f"""
-    <li class="tl-node">
+    <li class="tl-node" title="{esc(n.title)}">
       <span class="tl-dot" style="background:{color}"></span>
-      <div class="tl-body">
+      <div class="tl-body" data-reveal style="--d:{_stagger(i, 55)}">
         <div class="tl-head">
           <span class="tl-title" style="color:{color}">{esc(n.title)}</span>
           <span class="tl-when">{esc(when)}</span>
@@ -897,7 +943,7 @@ def render_timeline(analysis: Analysis) -> str:
         <p class="tl-detail">{esc(n.detail)}</p>
       </div>
     </li>""")
-    return f'<ol class="timeline">{"".join(items)}</ol>'
+    return f'<ol class="timeline" data-timeline>{"".join(items)}</ol>'
 
 
 # --------------------------------------------------------------------------- #
@@ -1382,6 +1428,160 @@ footer b {{ color: var(--ink-soft); }}
   }}
   .section {{ break-inside: avoid-page; }}
 }}
+
+/* =====================================================================
+   动效系统
+   ---------------------------------------------------------------------
+   原则：入场有节制、交互有反馈、随时可关闭。
+
+   隐藏内容靠 ``html.anim-ready`` 这个类，而不是默认状态：
+   脚本启动时给 <html> 加 .anim-ready，CSS 才把元素藏起来等入场。
+   脚本没跑或被拦掉时，页面就是一份「没有动画的正常文档」。
+   JS 不可用会白屏，是这一层最贵的一类 bug，所以宁可少一个动画。
+   ===================================================================== */
+
+/* --- 入场：淡入 + 轻微上浮 ---
+   关键设计：默认可见。
+   脚本启动时给 ``<html>`` 加 ``.anim-ready``，下面第一条规则才生效、
+   元素才被藏起来等着入场。这样脚本没跑、跑挂、或被拦掉时，
+   页面永远是「没有动画的正常文档」，而不是一片空白——
+   「内容因入场动画永久隐形」是这个项目里最贵的一类 bug。 */
+html.anim-ready [data-reveal] {{
+  opacity: 0;
+  transform: translate3d(0, 16px, 0);
+}}
+[data-reveal] {{
+  transition:
+    opacity .6s cubic-bezier(.22, .7, .3, 1),
+    transform .6s cubic-bezier(.22, .7, .3, 1);
+  transition-delay: var(--d, 0ms);
+}}
+[data-reveal].is-in {{ opacity: 1; transform: none; }}
+/* 减少动效时不做入场，元素始终可见 */
+html.no-motion [data-reveal] {{ opacity: 1 !important; transform: none !important; transition: none !important; }}
+html.no-motion [data-heat-cell] {{ animation: none; opacity: 1; }}
+
+/* --- 进度条：宽度生长由脚本在揭示时驱动（见 _SPY_SCRIPT）。
+       这里只给过渡曲线；没有脚本时宽度就是最终值，不会空白。 --- */
+.bar-fill, .mini-fill, .persona-bar > div, .q-bar > div {{
+  transform-origin: left center;
+  transition: width .9s cubic-bezier(.22, .7, .3, 1);
+}}
+
+/* --- 卡片浮起 --- */
+.card, .chart-card, .dim-card, .stat, .q-item, .persona-card,
+.ev, .tl-body, .heat-wrap, .cloud-wrap, .win, .bd {{
+  transition: box-shadow .3s ease, transform .3s cubic-bezier(.22, .7, .3, 1);
+}}
+@media (hover: hover) {{
+  .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
+  .tl-body:hover, .win:hover, .dim-card:hover {{
+    transform: translate3d(0, -3px, 0);
+    box-shadow: 0 2px 4px rgba(36, 31, 43, .05),
+                0 16px 34px -16px rgba(138, 79, 216, .28);
+  }}
+}}
+
+/* --- 热力图格子：像涟漪一样铺开 --- */
+@keyframes heatRise {{
+  from {{ opacity: 0; transform: scale(.3); transform-box: fill-box; transform-origin: center; }}
+  to   {{ opacity: 1; transform: scale(1); transform-box: fill-box; transform-origin: center; }}
+}}
+[data-heat-cell] {{
+  animation: heatRise .5s cubic-bezier(.22, .7, .3, 1) both;
+  animation-delay: var(--d, 0ms);
+}}
+
+/* --- 环形仪表盘：入场时轻微放大 --- */
+@keyframes gaugeIn {{
+  from {{ opacity: 0; transform: scale(.94); }}
+  to   {{ opacity: 1; transform: scale(1); }}
+}}
+.gauge-wrap.is-in svg.gauge {{ animation: gaugeIn .7s cubic-bezier(.22, .7, .3, 1) both; }}
+
+/* --- 雷达图：整块淡入 + 从中心展开 --- */
+.radar {{
+  transform-origin: center;
+  transition: opacity .7s ease, transform .7s cubic-bezier(.22, .7, .3, 1);
+}}
+[data-reveal]:not(.is-in) .radar {{ opacity: 0; transform: scale(.9); }}
+
+/* --- 折线：描边自左向右画出来 --- */
+svg.linechart path {{
+  stroke-dasharray: var(--len, 2400);
+  stroke-dashoffset: var(--len, 2400);
+}}
+.is-in svg.linechart path {{ animation: drawLine 1.25s cubic-bezier(.35, .7, .3, 1) forwards; }}
+@keyframes drawLine {{ to {{ stroke-dashoffset: 0; }} }}
+svg.linechart circle {{ opacity: 0; transition: opacity .45s ease .5s; }}
+.is-in svg.linechart circle {{ opacity: 1; }}
+
+/* --- 时间线：节点依次亮起 --- */
+.tl-node {{ transition: opacity .5s ease; transition-delay: var(--d, 0ms); }}
+[data-reveal]:not(.is-in) .tl-node {{ opacity: 0; }}
+
+/* --- 词云：词逐个浮现 --- */
+svg.wordcloud text {{ transition: opacity .6s ease; transition-delay: var(--d, 0ms); }}
+[data-reveal]:not(.is-in) svg.wordcloud text {{ opacity: 0; }}
+
+/* --- 导航高亮平滑过渡 --- */
+.nav-link {{ transition: background .25s ease, color .25s ease, border-color .25s ease; }}
+
+/* --- 数字滚动标记 --- */
+[data-count] {{ font-variant-numeric: tabular-nums; }}
+
+/* --- 尊重「减少动态效果」 --- */
+@media (prefers-reduced-motion: reduce) {{
+  [data-reveal] {{ opacity: 1 !important; transform: none !important; transition: none !important; }}
+  [data-heat-cell] {{ animation: none !important; opacity: 1 !important; }}
+  .gauge-wrap.is-in svg.gauge {{ animation: none !important; }}
+  svg.linechart path {{
+    stroke-dasharray: none !important; stroke-dashoffset: 0 !important; animation: none !important;
+  }}
+  svg.linechart circle, svg.wordcloud text, .tl-node {{
+    opacity: 1 !important; transition: none !important;
+  }}
+  .radar {{ opacity: 1 !important; transform: none !important; transition: none !important; }}
+  .bar-fill, .mini-fill, .persona-bar > div, .q-bar > div {{ transition: none !important; }}
+  .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
+  .tl-body:hover, .win:hover, .dim-card:hover {{ transform: none !important; }}
+  html {{ scroll-behavior: auto; }}
+}}
+
+/* =====================================================================
+   个性化收尾文案（insight）
+   ===================================================================== */
+.insight {{
+  margin-top: 20px; padding: 18px 17px; border-radius: 16px;
+  background: linear-gradient(140deg, #fdf4f8 0%, #f6f0fd 55%, #fdf1ea 100%);
+  border: 1px solid #f0e4ee;
+  box-shadow: 0 2px 6px rgba(138, 79, 216, .05),
+              0 18px 40px -22px rgba(225, 72, 127, .35);
+}}
+.insight-head {{ display: flex; align-items: center; gap: 9px; margin-bottom: 11px; flex-wrap: wrap; }}
+.insight-badge {{
+  font-size: .68rem; font-weight: 700; letter-spacing: .05em;
+  color: #fff; padding: 3px 11px; border-radius: 99px;
+  background: linear-gradient(100deg, var(--me), var(--peer) 62%, var(--accent));
+}}
+.insight-from {{ color: #8b7f97; }}
+.insight-lead {{
+  font-size: 1rem; font-weight: 620; color: #3b3342; line-height: 1.72;
+  margin: 0 0 5px; letter-spacing: -.01em;
+}}
+.insight-support {{ color: #8b7f97; margin: 0 0 11px; }}
+.insight-closing {{
+  font-size: .925rem; color: #4e4557; line-height: 1.85; margin: 0;
+  padding-top: 11px; border-top: 1px dashed #ece0ee;
+}}
+.insight-based {{ color: #a396ae; margin: 9px 0 0; }}
+
+/* --- 渐变文字（仅用于极少数强调，不用于正文） --- */
+.grad-text {{
+  background: linear-gradient(100deg, var(--me), var(--peer) 55%, var(--accent));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: var(--peer);
+}}
 """
 
 
@@ -1400,7 +1600,7 @@ def _nav_items(analysis: Analysis) -> list[tuple[str, str, str, str]]:
         ("quantifiers", "🎯", "量化指标", "回复速度 · 消息频率 · 深夜 · 破冰 · 收尾"),
         ("balance", "⚖️", "双方投入度与关键数据", "两个人的投入对比，以及一眼能看完的数字"),
         ("footprint", "🧭", "聊天足迹", "跨度、最佳时段、活跃月份、最长一次与最长沉默"),
-        ("heatmap", "📅", "日历热力图", "仿 GitHub 贡献图，颜色深浅代表聊了多久"),
+        ("heatmap", "📅", "日历热力图", "一整年的对话热度，颜色深浅代表聊了多久"),
         ("topics", "💬", "话题词云", "你们聊得最多的是什么"),
         ("persona", "🪞", f"{analysis.peer} 是怎样的人", "基于可观测行为，不是性格判断"),
         ("timeline", "📍", "关键节点", "这段关系里值得记下来的时刻"),
@@ -1439,14 +1639,19 @@ def _nav_html(items: list[tuple[str, str, str, str]], analysis: Analysis,
 
 def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
              body: str) -> str:
-    """包一个带序号与锚点的区块。"""
+    """包一个带序号与锚点的区块。
+
+    ``data-reveal`` 让区块在滚入视野时淡入上浮（见动效系统 CSS/JS）。
+    子元素没有被自动打标签，由各渲染函数自己决定哪一层参与入场，
+    这样同一个区块里可以有层次而不是整块一起动。
+    """
     entry = next((it for it in items if it[0] == sid), None)
     title = entry[2] if entry else sid
     desc = entry[3] if entry else ""
     desc_html = f'<p class="section-desc">{esc(desc)}</p>' if desc else ""
     return f"""
 <section class="section" id="{sid}">
-  <div class="section-head">
+  <div class="section-head" data-reveal>
     <h2><span class="section-num">{index:02d}</span>{esc(title)}</h2>
     {desc_html}
   </div>
@@ -1454,52 +1659,193 @@ def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
 </section>"""
 
 
-#: 滚动高亮（scroll-spy）。纯渐进增强：
-#: 禁用 JS 时导航链接依然可用（它们是普通锚点，靠 CSS ``scroll-behavior`` 平滑跳转），
-#: 只是不会自动高亮当前章节。**不含任何网络请求。**
+#: 页面脚本。两部分，都是纯渐进增强，**不含任何网络请求**：
+#:
+#: 1. **章节导航高亮**（scroll-spy）：普通锚点链接本来就能用，
+#:    脚本只是让当前章节在侧栏/标签栏里显示为激活态。
+#: 2. **入场动效**：滚动到视野内时淡入上浮、数字滚动、折线描边生长、
+#:    进度条从 0 长出。任何一步失败都只是「没有动画」，不影响内容可读。
+#:
+#: 脚本第一件事就是检查 ``prefers-reduced-motion``：命中则给 ``<html>``
+#: 加 ``.no-motion``，CSS 会把所有动效关掉；同时也兜住了「JS 被禁用」
+#: 的情况——没有脚本时 CSS 里 ``[data-reveal]`` 的初始透明度为 0，
+#: 所以由 ``<noscript>`` 里的样式负责显示（见 ``build_html``）。
 _SPY_SCRIPT = """
 <script>
 (function () {
-  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
-  if (!links.length || !('IntersectionObserver' in window)) return;
-  var byId = {};
-  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
-  var sections = Object.keys(byId).map(function (id) { return document.getElementById(id); })
-                       .filter(Boolean);
-  if (!sections.length) return;
+  var root = document.documentElement;
+  root.classList.remove('no-motion');
+  var reduce = window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { root.classList.add('no-motion'); }
 
+  /* ---------- 1. 章节导航高亮 ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
+  var byId = {};
+  links.forEach(function (a) {
+    var href = a.getAttribute('href') || '';
+    if (href.charAt(0) === '#') byId[href.slice(1)] = a;
+  });
+  var sections = Object.keys(byId)
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
   var visible = {};
-  function refresh() {
+
+  function highlight() {
+    if (!sections.length) return;
     var best = null, bestTop = Infinity;
     sections.forEach(function (s) {
       if (!visible[s.id]) return;
       var top = Math.abs(s.getBoundingClientRect().top);
       if (top < bestTop) { bestTop = top; best = s.id; }
     });
-    // 没有任何区块进入视野时，退化为「最后一个已滚过的区块」
     if (!best) {
-      var y = window.scrollY + 120;
+      var y = window.scrollY + 140;
       sections.forEach(function (s) { if (s.offsetTop <= y) best = s.id; });
     }
     if (!best) return;
-    links.forEach(function (a) {
-      a.classList.toggle('is-active', a === byId[best]);
-    });
+    links.forEach(function (a) { a.classList.toggle('is-active', a === byId[best]); });
     var active = byId[best];
+    // 移动端把当前项滚进标签栏视野
     if (active && active.scrollIntoView && window.innerWidth < 940) {
       active.scrollIntoView({ block: 'nearest', inline: 'center' });
     }
   }
 
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
-    refresh();
-  }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+  if (sections.length && 'IntersectionObserver' in window) {
+    var navIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      highlight();
+    }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
+    sections.forEach(function (s) { navIo.observe(s); });
+    window.addEventListener('scroll', highlight, { passive: true });
+    window.addEventListener('resize', highlight);
+    highlight();
+  }
 
-  sections.forEach(function (s) { io.observe(s); });
-  window.addEventListener('scroll', refresh, { passive: true });
-  window.addEventListener('resize', refresh);
-  refresh();
+  /* ---------- 2. 入场动效 ---------- */
+
+  // 折线：先量出真实长度写进 --len，否则 dasharray 对不上会「画一半」
+  function measureLines() {
+    Array.prototype.forEach.call(document.querySelectorAll('svg.linechart path'), function (p) {
+      try {
+        var len = p.getTotalLength();
+        if (len && isFinite(len)) p.style.setProperty('--len', len.toFixed(1));
+      } catch (e) { /* 拿不到长度就不做描边动画 */ }
+    });
+  }
+
+  // 数字滚动：只在元素首次进入视野时跑一次
+  function countUp(el) {
+    var target = parseFloat(el.getAttribute('data-count'));
+    if (!isFinite(target)) return;
+    var dur = 900, t0 = null;
+    function step(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      // easeOutCubic：起步快、收尾稳
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = String(Math.round(target * eased));
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = String(Math.round(target));
+    }
+    requestAnimationFrame(step);
+  }
+
+  var revealTargets = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+  var gaugeEl = document.querySelector('.gauge-num');
+
+  // 数字滚动：只跑一次；元素自身带 data-count，或它内部有 data-count
+  function runCounts(el) {
+    var list = [];
+    if (el.hasAttribute && el.hasAttribute('data-count')) list.push(el);
+    Array.prototype.forEach.call(el.querySelectorAll('[data-count]'), function (c) {
+      list.push(c);
+    });
+    list.forEach(function (c) {
+      if (c.dataset.done) return;
+      c.dataset.done = '1';
+      // 减少动效时数字直接落定，但仍然要执行——否则它会停在 0
+      if (reduce) {
+        c.textContent = String(Math.round(parseFloat(c.getAttribute('data-count'))));
+      } else {
+        countUp(c);
+      }
+    });
+  }
+
+  function showNow(el) {
+    if (el.classList.contains('is-in')) return;
+    // 先清掉内联 opacity（部分区块用它参与卡片错峰），再打标记触发过渡
+    el.style.removeProperty('opacity');
+    el.classList.add('is-in');
+    // 进度条从 0 长出：先把真实宽度记下来、压到 0，
+    // 下一帧再还原，这样浏览器才有机会做过渡。
+    // 用显式调用而不是纯 CSS，是为了「没有 JS」时进度条依然是满的。
+    var bars = el.querySelectorAll('.bar-fill, .mini-fill, .persona-bar > div, .q-bar > div');
+    if (bars.length && !reduce) {
+      Array.prototype.forEach.call(bars, function (b) {
+        if (b.dataset.w === undefined) b.dataset.w = b.style.width || '0%';
+        b.style.width = '0%';
+      });
+      window.requestAnimationFrame(function () {
+        Array.prototype.forEach.call(bars, function (b) { b.style.width = b.dataset.w; });
+      });
+    }
+    runCounts(el);
+  }
+
+  // 揭示逻辑刻意不依赖 IntersectionObserver：
+  // 快速滚动、无头浏览器、部分内置浏览器里它会漏触发，
+  // 而漏触发的后果是内容永久不可见——代价太大。
+  // 这里用最朴素的「算一下在不在视口里」，滚动/缩放/加载后都跑一遍。
+  var ticking = false;
+
+  function inViewport(el) {
+    var r = el.getBoundingClientRect();
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    return r.top < vh - 40 && r.bottom > -40;
+  }
+
+  function refresh() {
+    ticking = false;
+    for (var i = 0; i < revealTargets.length; i++) {
+      var el = revealTargets[i];
+      if (el.classList.contains('is-in')) continue;
+      if (inViewport(el)) showNow(el);
+    }
+    measureLines();
+  }
+
+  function requestRefresh() {
+    if (ticking) return;
+    ticking = true;
+    if (window.requestAnimationFrame) window.requestAnimationFrame(refresh);
+    else window.setTimeout(refresh, 16);
+  }
+
+  measureLines();
+  refresh();   // 首屏立刻处理
+
+  window.addEventListener('scroll', requestRefresh, { passive: true });
+  window.addEventListener('resize', requestRefresh);
+  window.addEventListener('load', requestRefresh);
+
+  // 仪表盘在首屏，一定可见：一进页面就滚动起来
+  if (gaugeEl) runCounts(gaugeEl);
+
+  // 兜底：布局变化后再补两次
+  window.setTimeout(refresh, 180);
+  window.setTimeout(refresh, 700);
+
+  // 最后一道保险：无论前面发生什么，3 秒后把还没揭示的一律显示出来。
+  // 宁可少一个动画，也不能让读者看到空白。
+  window.setTimeout(function () {
+    for (var i = 0; i < revealTargets.length; i++) {
+      var el = revealTargets[i];
+      if (!el.classList.contains('is-in')) el.classList.add('is-in');
+    }
+  }, 3000);
 })();
 </script>
 """
@@ -1547,8 +1893,8 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
 
     heatmap_body = f"""
     <p class="tiny faint" style="margin-bottom:12px">
-      仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
-      （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
+      一整年的对话铺成一张图：每个格子是一天，<b>颜色越深，那天聊得越久</b>
+      （算的是当天各段对话的时长总和，一段对话指消息间隔不超过 30 分钟的连续交谈）。
     </p>
     {render_heatmap_section(analysis)}"""
 
@@ -1612,6 +1958,34 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
 <meta name="robots" content="noindex, nofollow">
 <title>TA 到底爱不爱我 · {esc(analysis.peer)} × {esc(analysis.me)} · {result.total} 分</title>
 <style>{_css()}</style>
+<noscript><style>
+  /* 禁用 JS 时没有观察器来触发入场，必须让内容直接可见 */
+  [data-reveal] {{ opacity: 1 !important; transform: none !important; transition: none !important; }}
+  [data-heat-cell] {{ animation: none !important; opacity: 1 !important; }}
+  svg.linechart path {{ stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }}
+  svg.linechart circle, svg.wordcloud text, .tl-node {{ opacity: 1 !important; }}
+  .radar {{ opacity: 1 !important; transform: none !important; }}
+</style></noscript>
+<script>
+  /* 启用入场动效之前先做两项判断，避免出现「先隐形再闪现」或白屏：
+     1. 减少动效 / 没有必需 API  -> 加 .no-motion，不做任何动画；
+     2. 否则加 .anim-ready，CSS 才把 [data-reveal] 藏起来等待入场。
+     页面底部的主脚本与此处各管一段，互不依赖。 */
+  (function () {{
+    var d = document.documentElement;
+    var ok = 'querySelectorAll' in document
+      && window.addEventListener
+      && window.getComputedStyle
+      && (window.requestAnimationFrame || window.setTimeout);
+    var noMotion = !ok
+      || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    if (noMotion) {{
+      d.classList.add('no-motion');
+      return;
+    }}
+    d.classList.add('anim-ready');
+  }})();
+</script>
 </head>
 <body>
 <div class="layout">
@@ -1636,7 +2010,7 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
 
     {sec("notes", notes_body)}
 
-    {render_comfort(result)}
+    {render_comfort(result, analysis)}
 
     <footer>
       <p><b>数据只在本地处理。</b>这份报告由 loves-me-not 在你的设备上离线生成，

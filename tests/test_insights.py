@@ -11,8 +11,10 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import unittest
+import unittest.mock
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -129,8 +131,8 @@ class TestDayDurationHonesty(unittest.TestCase):
         days = insights.build_days(conv.real_messages, "我", "阿澈", sessions)
         fp = timeline.build_footprint(conv.real_messages, "我", "阿澈", sessions, silences=[], days=days)
         html_out = visuals.render_heatmap(fp)
-        # 图例与说明必须讲清楚用的是「各段对话时长之和」
-        self.assertIn("各段对话", html_out)
+        # 说明文案必须讲清楚算的是「对话时长总和」，不是首尾跨度
+        self.assertIn("对话时长", html_out)
         self.assertNotIn("当天最后一条消息 − 第一条消息", html_out)
 
 
@@ -395,6 +397,109 @@ class TestVisuals(unittest.TestCase):
         self.assertIn("<svg", html)
 
 
+class TestPersonalNote(unittest.TestCase):
+    """结尾的个性化文案：必须从真实数据长出来，且不许编造。"""
+
+    def _note(self, name, me="我", peer="阿澈", score=None):
+        conv = parser.parse_file(SAMPLES / name)
+        analysis = metrics.analyze(conv, me, peer)
+        result = scoring.score(analysis)
+        return analysis, result, analysis.personal_note
+
+    def test_generated_from_real_data(self):
+        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        self.assertIsNotNone(note, "这份记录应当能挑出一条专属观察")
+        self.assertTrue(note.headline.strip())
+        self.assertTrue(note.support.strip())
+        self.assertTrue(note.closing.strip())
+        self.assertIn(note.tone, ("warm", "gentle"))
+        self.assertTrue(note.based_on, "必须说明依据哪个指标")
+
+    def test_based_on_is_a_real_metric(self):
+        """依据必须指向真实存在的指标名，不能是编出来的词。"""
+        from loves_me_not import insights as _ins
+        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        valid = {"回复速度", "每 5 分钟发消息次数", "深夜发消息次数",
+                 "打破僵局次数", "最后发言次数", "聊得最多的月份",
+                 "最长的一次聊天", "主动发起对话次数", "关键节点",
+                 "情绪倾向随时间变化"}
+        for key in note.based_on:
+            self.assertIn(key, valid, f"依据里出现了未知指标：{key}")
+
+    def test_numbers_in_headline_are_consistent(self):
+        """文案里的数字必须与真实统计对得上，不能夸大。"""
+        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        # 「冷过 N 次」的 N 必须等于真实的长时间沉默总数
+        if "冷过" in note.headline:
+            m = re.search(r"冷过\s*(\d+)\s*次", note.headline)
+            self.assertIsNotNone(m)
+            total = sum(
+                1 for g in analysis.silences
+                if g.length.total_seconds() >= 86400 and g.broken_by
+            )
+            self.assertEqual(int(m.group(1)), total)
+
+    def test_icebreak_wording_matches_share(self):
+        """「每一次都是他」与「其中几次是他」不能混用。"""
+        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        if "先开口" in note.headline or "先低头" in note.headline:
+            big = [g for g in analysis.silences
+                   if g.length.total_seconds() >= 86400 and g.broken_by]
+            peer_big = [g for g in big if g.broken_by == "阿澈"]
+            share = len(peer_big) / max(1, len(big))
+            if "每一次都是" in note.headline:
+                self.assertAlmostEqual(share, 1.0, places=2)
+            elif "其中" in note.headline:
+                self.assertLess(share, 1.0)
+
+    def test_tiny_sample_yields_no_note(self):
+        """样本太小时不许硬编一句话出来。"""
+        _a, _r, note = self._note("sample_tiny.txt")
+        self.assertIsNone(note)
+
+    def test_different_records_get_different_notes(self):
+        """不同记录应当得到不同的专属文案——否则「个性化」是假的。"""
+        _a1, _r1, n1 = self._note("sample_wechat_cooling.txt")
+        _a2, _r2, n2 = self._note("sample_wechat_pc_paste.txt")
+        self.assertIsNotNone(n1)
+        self.assertIsNotNone(n2)
+        self.assertNotEqual(n1.headline, n2.headline)
+
+    def test_note_rendered_into_report(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertIn('class="insight"', html)
+        self.assertIn(esc(analysis.personal_note.headline), html)
+        self.assertIn("只属于这份记录的一句话", html)
+
+    def test_report_without_note_still_renders(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertIn("写在这里的话", html)
+        self.assertNotIn('class="insight"', html)
+
+    def test_generation_failure_is_surfaced_not_swallowed(self):
+        """生成失败时要留下痕迹，不能静默吞掉（曾经因此漏掉一个 NameError）。"""
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        before = len(analysis.caveats)
+        with unittest.mock.patch.object(
+            timeline, "build_personal_note", side_effect=RuntimeError("boom")
+        ):
+            scoring.score(analysis)
+        self.assertGreater(len(analysis.caveats), before)
+        self.assertTrue(any("个性化" in c for c in analysis.caveats))
+
+
+def esc(x):
+    import html
+    return html.escape(str(x), quote=True)
+
+
 class TestReportIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -420,8 +525,8 @@ class TestReportIntegration(unittest.TestCase):
         low = self.html.lower()
         for bad in ("http://", "https://", "src=", "@import"):
             self.assertNotIn(bad, low, f"新增区块引入了外部引用：{bad}")
-        # 唯一允许的脚本：内联的章节导航高亮（无 URL、无外部 src）
-        self.assertEqual(low.count("<script"), 1)
+        # 脚本全部内联，且不随数据规模增长
+        self.assertLessEqual(low.count("<script"), 3)
 
     def test_gauge_is_a_progress_ring(self):
         """仪表盘必须是环形进度条：单个 dasharray 圆，无指针、无刻度溢出。"""

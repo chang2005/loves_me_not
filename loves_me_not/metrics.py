@@ -211,6 +211,11 @@ class Analysis:
     topics: list = field(default_factory=list)
     #: 「TA 是怎样的人」
     persona: list = field(default_factory=list)
+    #: 结尾的个性化文案（由 :func:`loves_me_not.scoring.score` 事后填入，
+    #: 因为它依赖最终得分来决定落点是夸赞还是鼓励）
+    personal_note: object | None = None
+    #: 原始消息（供打分阶段生成个性化文案时复用，不参与 JSON 输出）
+    raw_messages: list = field(default_factory=list, repr=False)
 
 
 # --------------------------------------------------------------------------- #
@@ -1608,4 +1613,5 @@ def analyze(conv: Conversation, me: str, peer: str) -> Analysis:
         timeline_nodes=nodes,
         topics=topics,
         persona=persona,
+        raw_messages=real,
     )

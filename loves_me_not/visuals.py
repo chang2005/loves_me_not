@@ -1,13 +1,13 @@
-"""三种新可视化：聊天足迹热力图、话题词云、人物画像卡。
+"""三种新可视化：日历热力图、话题词云、人物画像卡。
 
 全部输出**内联 SVG / HTML**，不依赖任何前端库，报告保持单文件自包含。
 
-1. :func:`render_heatmap` —— 仿 GitHub Contribution 的日历热力图。
-   颜色深浅代表**当次聊天时长**（当天首尾消息的时间差），
-   而不是消息条数——用户明确要求用时长来编码深浅。
+1. :func:`render_heatmap` —— 日历热力图。一格一天，用颜色深浅表示对话时长，
+   把「你们什么时候聊得多」摊成一整年的形状。
+   （刻意不借用任何具体平台的样式或名称：这里表达的是时间密度，
+   与记录从哪来无关。）
 2. :func:`render_wordcloud` —— 话题词云。用「螺旋放置 + 碰撞检测」在
-   Python 里算好每个词的位置，输出绝对定位的 HTML span，
-   移动端自动换行（宽度不足时降级为普通标签流）。
+   Python 里算好每个词的位置，输出 SVG 文本，移动端自动等比缩放。
 3. :func:`render_persona` —— 「TA 是一个怎样的人」卡片墙。
 """
 
@@ -24,37 +24,56 @@ from .timeline import Footprint, HourBucket, MonthStat
 
 # --------------------------------------------------------------------------- #
 # 调色板：**这里是全项目颜色的唯一来源**
+#
+# 配色取向：柔和渐变系（紫 → 品红 → 珊瑚 → 暖橙）。这套色系的好处是
+# 相邻色相之间过渡连续，适合做渐变与热力色阶；同时保持低饱和，
+# 长文阅读不刺眼。
+#
+# 一个刻意的取舍：**正文不用彩色**。彩色只用于强调、图表与状态，
+# 文字仍是中性深灰——否则整页会花，反而不好读。
 # --------------------------------------------------------------------------- #
 
 PALETTE = {
-    # 底色与层次
-    "bg": "#f6f4f1",
+    # 底色与层次（暖白偏紫调）
+    "bg": "#faf7fb",
     "surface": "#ffffff",
-    "surface_alt": "#faf8f6",
-    "ink": "#2a2731",
-    "ink_soft": "#5f5966",
-    "ink_faint": "#928c98",
-    "line": "#e7e2df",
-    "line_soft": "#f0ece8",
+    "surface_alt": "#f7f3f8",
+    "ink": "#241f2b",
+    "ink_soft": "#5c5468",
+    "ink_faint": "#918aa0",
+    "line": "#ece5ef",
+    "line_soft": "#f4eff6",
+
     # 语义色
-    "peer": "#b4576f",        # 深玫瑰——代表 TA
-    "peer_soft": "#f3e4e8",
-    "me": "#4f7fa0",          # 雾蓝——代表我
-    "me_soft": "#e5edf4",
-    "accent": "#b07d34",
-    "accent_soft": "#f6eedd",
-    "good": "#4f8a6b",
-    "warn": "#b5793a",
+    "peer": "#e1487f",        # 品红——代表 TA
+    "peer_soft": "#fde7f0",
+    "me": "#8a4fd8",          # 紫罗兰——代表我
+    "me_soft": "#f0e8fd",
+    "accent": "#f2764a",      # 珊瑚橙——强调
+    "accent_soft": "#fdeee7",
+    "good": "#2fa37a",        # 青绿——正向
+    "warn": "#e08a2e",        # 琥珀——注意
+    "danger": "#d94a5c",
+
+    # 渐变端点（标题、进度环、装饰线）
+    "grad_a": "#8a4fd8",
+    "grad_b": "#e1487f",
+    "grad_c": "#f2764a",
+    "grad_d": "#f7b733",
+
     # 结构（侧栏导航）
-    "nav_bg": "#221f28",
-    "nav_ink": "#cfc9d4",
+    "nav_bg": "#1d1723",
+    "nav_ink": "#cabfd4",
     "nav_ink_active": "#ffffff",
+
     # 兼容旧键名（HTML 侧仍在用 card）
     "card": "#ffffff",
 }
 
-#: 热力图色阶：由浅到深（时长 0 → 最长）
-HEAT_SCALE = ("#f0ecea", "#f0dde3", "#e2b9c5", "#d08ea2", "#b4576f", "#8e3d55")
+#: 热力图 / 热力色阶：由浅到深（时长 0 → 最长）
+#: 走的是「紫 → 品红 → 珊瑚 → 橙」这条连续色带，深浅与色相同时递进，
+#: 所以既能看出「聊了多久」，也能看出冷热的层次。
+HEAT_SCALE = ("#f2edf4", "#f7dfea", "#f4bfd4", "#ef95b7", "#e86a97", "#d43d74", "#b32a5c")
 
 WEEKDAY_LABELS = ("一", "二", "三", "四", "五", "六", "日")
 MONTH_LABELS = ("1月", "2月", "3月", "4月", "5月", "6月",
@@ -66,7 +85,7 @@ def esc(text: object) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# 1. 模仿 GitHub Contribution 的日历热力图
+# 1. 日历热力图（贡献图式样：一格一天）
 # --------------------------------------------------------------------------- #
 
 def _heat_color(minutes: float, scale_max: float) -> str:
@@ -81,12 +100,13 @@ def _heat_color(minutes: float, scale_max: float) -> str:
 
 
 def render_heatmap(footprint: Footprint, weeks_limit: int | None = None) -> str:
-    """仿 GitHub 贡献图的日历热力图。
+    """日历热力图：一格一天，**颜色深浅 = 当天聊了多久**。
 
     * 每个格子 = 一天；
-    * 列 = 周（周一在上），行 = 星期；
-    * **格子颜色的深浅 = 当次聊天时长**（当天最后一条 − 第一条消息）；
-    * 时长存疑时（样本不足）仍然画，但图例里写清楚口径。
+    * 列 = 一周（周一在上），行 = 星期几；
+    * 颜色的深浅与色相同时递进，代表当天各段对话的时长之和；
+    * 只画格子本身，不带任何外部平台的样式或名称——
+      这里表达的是「你们的时间密度」，与记录从哪来无关。
 
     ``weeks_limit`` 用于截断过长的历史（默认全部画出，靠横向滚动查看）。
     """
@@ -134,10 +154,13 @@ def render_heatmap(footprint: Footprint, weeks_limit: int | None = None) -> str:
         y = pad_top + di * (cell + gap)
         color = _heat_color(d.chat_minutes, scale_max)
         tip = (f"{key} · {d.count} 条消息 · 聊了 {_hm(d.chat_minutes)}"
-               f"（TA {d.peer_count} / 我 {d.me_count}）")
+               f"（{d.peer_count} / {d.me_count}）")
+        # 按周列做错峰延迟：整片格子会像涟漪一样自左向右铺开
+        delay = min(wi * 14, 900)
         cells.append(
             f'<rect x="{x}" y="{y}" width="{cell}" height="{cell}" rx="2.5" '
-            f'fill="{color}"><title>{esc(tip)}</title></rect>'
+            f'fill="{color}" data-heat-cell style="--d:{delay}ms">'
+            f'<title>{esc(tip)}</title></rect>'
         )
 
     # 月份标签：每列若跨月则在顶部标注
@@ -190,23 +213,24 @@ def render_heatmap(footprint: Footprint, weeks_limit: int | None = None) -> str:
     </svg>
   </div>
   <div class="heat-legend">
-    <span class="tiny faint">颜色越深 = 当天聊得越久</span>
+    <span class="tiny faint">颜色越深，那天聊得越久</span>
     <svg width="{len(HEAT_SCALE) * 15 - 4}" height="11" class="heat-scale" aria-hidden="true">
       {legend_cells}
     </svg>
-    <span class="tiny faint">0 → {_hm(scale_max)}</span>
+    <span class="tiny faint">几乎没有 → 0 到 {_hm(scale_max)}</span>
   </div>
   <div class="heat-facts tiny">
     <span>有对话的天数：<b>{len(days)}</b></span>
-    <span>消息最多：<b>{busiest.date_key}</b>（{busiest.count} 条）</span>
-    <span>聊得最久：<b>{longest.date_key}</b>（{_hm(longest.chat_minutes)}）</span>
+    <span>最密集的一天：<b>{busiest.date_key}</b>（{busiest.count} 条）</span>
+    <span>最投入的一天：<b>{longest.date_key}</b>（{_hm(longest.chat_minutes)}）</span>
   </div>
   <p class="tiny faint heat-note">
-    口径：每个格子是一天，颜色深浅取<b>当天各段对话的时长之和</b>——
-    一段对话指相邻消息间隔不超过 30 分钟的连续聊天。
-    所以「发了很多条但集中在 5 分钟内」的一天颜色会很浅；
-    而「早上说一句、晚上说一句」也<b>不会</b>被算成聊了一整天。
-    悬停（手机上点按）可以看到当天明细。
+    每一个格子是一天，深浅代表那一天的<b>对话时长总和</b>；
+    一段对话指消息间隔不超过 30 分钟的连续交谈。
+    所以「一口气发很多条、但集中在几分钟内」的一天颜色会偏浅，
+    而「早上说一句、晚上说一句」也不会被算成聊了一整天——
+    这里衡量的是<b>真正交谈的时间密度</b>，不是消息条数。
+    悬停或点按任意格子，可以看到当天的明细。
   </p>
 </div>"""
 
@@ -319,14 +343,16 @@ def render_wordcloud(words: Sequence[TopicWord], me: str, peer: str,
         return '<p class="faint">话题词太少，无法排版词云。</p>'
 
     texts = []
-    for tw, font, x, y in laid:
+    for i, (tw, font, x, y) in enumerate(laid):
         color = _word_color(tw, me, peer)
         opacity = 0.62 + 0.38 * tw.weight
         who = tw.dominant or "双方"
+        # 大词先出现、小词后跟上，读起来像「话题一个个浮出来」
+        delay = min(int((1.0 - tw.weight) * 420) + i * 8, 700)
         texts.append(
             f'<text x="{x:.1f}" y="{y:.1f}" font-size="{font:.1f}" fill="{color}" '
             f'opacity="{opacity:.2f}" text-anchor="middle" dominant-baseline="middle" '
-            f'font-weight="{600 if tw.weight > 0.6 else 500}">'
+            f'font-weight="{600 if tw.weight > 0.6 else 500}" style="--d:{delay}ms">'
             f'<title>{esc(tw.word)}：出现 {tw.count} 次，主要由{esc(who)}说起</title>'
             f'{esc(tw.word)}</text>'
         )
@@ -335,7 +361,7 @@ def render_wordcloud(words: Sequence[TopicWord], me: str, peer: str,
     return f"""
 <div class="cloud-wrap">
   <svg viewBox="0 0 {CLOUD_W:.0f} {CLOUD_H:.0f}" class="wordcloud" role="img"
-       aria-label="话题词云，高频词：{esc(top5)}">
+       aria-label="话题词云，高频词：{esc(top5)}" data-reveal>
     {''.join(texts)}
   </svg>
   <div class="legend">
@@ -379,11 +405,12 @@ def render_persona(persona: Sequence[Persona], peer: str) -> str:
                 "（这不代表 TA 没有特点，只代表这份记录不够长。）</p>")
 
     cards = []
-    for p in persona:
+    for i, p in enumerate(persona):
         color = _TONE_COLOR.get(p.tone, PALETTE["ink_soft"])
         bar = max(6.0, min(100.0, p.strength * 100))
+        delay = min(i * 60, 600)
         cards.append(f"""
-    <article class="persona-card">
+    <article class="persona-card" data-reveal style="--d:{delay}ms">
       <div class="persona-head">
         <span class="persona-label" style="color:{color}">{esc(p.label)}</span>
         <span class="persona-tone tiny" style="background:{color}1f;color:{color}">
