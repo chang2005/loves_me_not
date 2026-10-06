@@ -1,0 +1,17 @@
+# 真实聊天记录：不进入版本库（隐私红线）
+data/
+samples/local/
+*.local.txt
+*.local.csv
+
+# 生成的报告与中间产物
+out/
+*.report.html
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/
