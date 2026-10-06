@@ -523,6 +523,19 @@ footer b { color: var(--ink-soft); }
   .comfort { padding: 34px 0; }
   .comfort h2 { font-size: 1.05rem; }
 
+  /* 窄屏防溢出：长段落、长串（URL / 无空格英文）都要能换行，
+     否则会把整页撑宽、出现横向滚动条。 */
+  .verdict-text p, .comfort p, .ev, .tl-detail, .caveat, .caveat p, footer p,
+  .section-desc, .q-desc, .dim-note {
+    overflow-wrap: anywhere; word-break: break-word; min-width: 0;
+  }
+  .card, .chart-card, .dim-card, .win, .bd, .persona-card, .stat, .q-item,
+  .verdict-text, .section { min-width: 0; }
+  /* 图表与热力图允许在自己内部横向滚动，而不是撑宽页面 */
+  .heat-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+  .chart-card, .chart-box, .tl-list, .dim-card { max-width: 100%; }
+  .q-head, .ev-head, .tl-head { flex-wrap: wrap; row-gap: 4px; }
+
   /* 触屏上 hover 浮起没有意义，关掉可以少一层合成开销 */
   .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
   .tl-body:hover, .win:hover, .dim-card:hover { transform: none; }
@@ -569,23 +582,47 @@ footer b { color: var(--ink-soft); }
 
 /* --- 入场：淡入 + 轻微上浮 ---
    关键设计：默认可见。
-   脚本启动时给 ``<html>`` 加 ``.anim-ready``，下面第一条规则才生效、
-   元素才被藏起来等着入场。这样脚本没跑、跑挂、或被拦掉时，
-   页面永远是「没有动画的正常文档」，而不是一片空白——
-   「内容因入场动画永久隐形」是这个项目里最贵的一类 bug。 */
+
+   脚本启动时给 `<html>` 加 `.anim-ready`，下面第一条规则才生效、
+   元素才被藏起来等着入场。脚本没跑、跑挂或被拦掉时，
+   页面永远是一份「没有动画的正常文档」，而不是一片空白。
+
+   入场用 animation 而不是 transition，这是刻意的：
+   transition 需要一个「起始值 → 目标值」的变化并且依赖帧推进，
+   一旦帧被节流、页面在后台、或元素在过渡过程中被重新挂载，
+   元素就可能永远停在 opacity:0。animation 带 `forwards` 填充，
+   目标状态由关键帧本身写死，不依赖两个值之间的插值。
+   （`.q-item` / `.stat` / 词云等整块内容空白，根因就在这条链上。） */
 html.anim-ready [data-reveal] {
   opacity: 0;
   transform: translate3d(0, 16px, 0);
 }
 [data-reveal] {
-  transition:
-    opacity .6s cubic-bezier(.22, .7, .3, 1),
-    transform .6s cubic-bezier(.22, .7, .3, 1);
-  transition-delay: var(--d, 0ms);
+  /* 只声明动画延迟用不到 transition；这里保留一行注释说明为什么没有 transition */
+  animation-delay: var(--d, 0ms);
 }
-[data-reveal].is-in { opacity: 1; transform: none; }
+/* 揭示：关键帧把终态写死，animation 结束后保持 forwards */
+@keyframes revealIn {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+/* 可见态同时给出 animation 与静态声明：
+   · animation 负责平滑入场；
+   · 静态 opacity/transform 是兜底——即使整个动画系统失效，
+     只要加了 .is-in 元素就是可见的。
+   !important 不能省：隐藏态 `html.anim-ready [data-reveal]`（0,2,1）
+   特异性高于 `[data-reveal].is-in`（0,2,0）。 */
+html.anim-ready [data-reveal].is-in,
+[data-reveal].is-in {
+  opacity: 1 !important;
+  transform: none !important;
+}
+html.anim-ready [data-reveal].is-in {
+  animation: revealIn .6s cubic-bezier(.22, .7, .3, 1) both;
+  animation-delay: var(--d, 0ms);
+}
 /* 减少动效时不做入场，元素始终可见 */
-html.no-motion [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+html.no-motion [data-reveal] { opacity: 1 !important; transform: none !important; animation: none !important; }
 html.no-motion [data-heat-cell] { animation: none; opacity: 1; }
 
 /* --- 进度条：宽度生长由脚本在揭示时驱动（见 _SPY_SCRIPT）。
@@ -636,7 +673,10 @@ html.no-motion [data-heat-cell] { animation: none; opacity: 1; }
   transition: opacity .7s ease, transform .7s cubic-bezier(.22, .7, .3, 1);
 }
 /* 以下三处的「隐藏」也都挂在 html.anim-ready 上：
-   脚本没跑时它们是普通可见内容，不会出现空白区块。 */
+   脚本没跑时它们是普通可见内容，不会出现空白区块。
+   注意子元素一律用 `:not(.is-in)` 限定，并且父元素是 data-reveal——
+   父元素揭示后这些子元素不再需要单独隐藏，避免再出现一次
+   「特异性打赢了、但过渡没推进」的僵死。 */
 html.anim-ready [data-reveal]:not(.is-in) .radar { opacity: 0; transform: scale(.9); }
 
 /* --- 折线：描边自左向右画出来 --- */
@@ -1540,7 +1580,7 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
       <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
       手机没电，或者他本来就不太会说话。</p>
       
-      <p>生成时间：2026-10-06 18:01 · loves-me-not v0.1.0</p>
+      <p>生成时间：2026-10-06 18:10 · loves-me-not v0.1.0</p>
     </footer>
 
   </main>

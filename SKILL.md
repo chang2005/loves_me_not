@@ -196,8 +196,22 @@ python -m loves_me_not analyze "path/to/chat.txt" --me "我" --redact -o out/rep
    现在主路径是 `IntersectionObserver`（零布局读取），兜底是
    **有限次数**的视口内扫描（`sweepLeft`）+ 最后一次无条件 `showAll`。
    改动时不要删兜底，也不要改回无界轮询。
-3. 热力图涟漪动画挂在 `.is-in` 上（揭示后才播），
+3. **可见态必须能压过隐藏态，且不能依赖过渡推进**。
+   隐藏态是 `html.anim-ready [data-reveal]`（特异性 0,2,1）；
+   可见态只写 `[data-reveal].is-in`（0,2,0）就会**输掉级联**，
+   元素加了 `.is-in` 却仍是 `opacity: 0`——
+   「量化指标」「双方投入度」里的卡片整块空白就是这么来的，
+   而且因为区块标题与外围仍在，只看「区块是否空白」的审计会漏掉。
+   现在的做法：
+   - 可见态带 `!important`（同时写 `html.anim-ready` 前缀提高特异性）；
+   - 入场改用 `@keyframes revealIn` + `animation ... both`，
+     **终态写死在关键帧里**，不依赖 transition 的插值与帧推进。
+   有测试 `test_revealed_state_beats_hidden_state` 守这两条。
+4. 热力图涟漪动画挂在 `.is-in` 上（揭示后才播），
    否则页面一加载就播完，读者翻到时什么也看不到。
+5. 审计产物时不要只看「区块是否空白」——要**逐个 `[data-reveal]`
+   元素检查计算后的 opacity**，否则会漏掉「区块在、内部卡片全隐藏」
+   这种半空白状态。
 
 ## 打分模型（可解释，不黑箱）
 

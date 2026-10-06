@@ -466,6 +466,68 @@ class TestReport(unittest.TestCase):
             )
         self.assertIn("html.anim-ready [data-reveal]", styles)
 
+    def test_revealed_state_beats_hidden_state(self):
+        """可见态必须能压过隐藏态，且不能依赖过渡推进。
+
+        这里踩过一个很贵的坑：隐藏态写成
+        ``html.anim-ready [data-reveal]``（特异性 0,2,1），
+        而可见态写成 ``[data-reveal].is-in``（0,2,0）——
+        后者特异性更低，**永远赢不了**，于是元素明明加了 .is-in
+        却仍是 opacity:0。表现就是「量化指标 / 关键数据」这些区块里
+        的卡片整块空白（区块标题和外围都在，所以整体审计看不出来）。
+
+        另外光靠特异性还不够：Transition 需要「起始值→目标值」的插值
+        并且依赖帧推进，帧一被节流元素就可能永远停在隐藏帧。
+        所以断言两件事：
+          1. 可见态规则带 !important；
+          2. 入场用 animation 的关键帧写死终态，而不是只靠 transition。
+        """
+        import re as _re
+
+        styles = "".join(_re.findall(r"<style>(.*?)</style>", self.html, _re.S))
+        styles = _re.sub(r"/\*.*?\*/", "", styles, flags=_re.S)
+
+        rules = [(sel.strip(), body) for sel, body in
+                 _re.findall(r"([^{}]+)\{([^{}]*)\}", styles)]
+
+        # 找出「隐藏 data-reveal」的规则与「显示 .is-in」的规则
+        hiding = [(s, b) for s, b in rules
+                  if "[data-reveal]" in s and "is-in" not in s
+                  and "no-motion" not in s and "opacity: 0" in b.replace(" ", " ")]
+        showing = [(s, b) for s, b in rules
+                   if "is-in" in s and "[data-reveal]" in s
+                   and "opacity: 1" in b]
+
+        self.assertTrue(hiding, "没找到隐藏 [data-reveal] 的规则")
+        self.assertTrue(showing, "没找到 [data-reveal].is-in 的可见态规则")
+        for sel, body in showing:
+            self.assertIn("!important", body,
+                          f"可见态必须用 !important 才能压过隐藏态：{sel}")
+
+        def specificity(sel: str) -> tuple[int, int, int]:
+            """粗略算 CSS 特异性 (id, class, type)。"""
+            ids = len(_re.findall(r"#[\w-]+", sel))
+            classes = len(_re.findall(
+                r"\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+", sel))
+            types = len(_re.findall(r"(?:^|[\s>+~])[a-zA-Z][\w-]*", sel))
+            return (ids, classes, types)
+
+        # 至少有一条可见态规则的特异性不低于隐藏态
+        best_hide = max(specificity(s) for s, _ in hiding)
+        best_show = max(specificity(s) for s, _ in showing)
+        self.assertGreaterEqual(
+            best_show, best_hide,
+            f"可见态特异性 {best_show} 低于隐藏态 {best_hide}，"
+            "元素加了 .is-in 也不会显示")
+
+        # 入场动画的关键帧必须把终态写死
+        self.assertIn("@keyframes revealIn", styles)
+        kf = _re.search(r"@keyframes revealIn\s*\{(.*?)\}\s*\}",
+                        styles, _re.S)
+        self.assertIsNotNone(kf, "没找到 revealIn 关键帧")
+        self.assertIn("opacity: 1", kf.group(1).replace("  ", " "),
+                      "revealIn 必须把不透明终态写进关键帧")
+
     def test_reveal_has_bounded_fallbacks(self):
         """揭示必须有兜底，但**不能每帧扫全表**（那是滚动卡顿的来源）。
 
