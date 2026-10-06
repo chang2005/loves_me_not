@@ -1,0 +1,369 @@
+"""维度计算、打分模型与报告生成的测试。
+
+重点覆盖三件「承诺过就必须做到」的事：
+
+1. 无信息的维度会被剔除，而不是当成 0 分；
+2. 样本不足时会给「样本不足」而不是强结论；
+3. 报告是自包含的（没有外部请求）、且所有用户文本都被转义。
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+import unittest
+from datetime import datetime, timedelta
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from loves_me_not import metrics, parser, report, scoring  # noqa: E402
+from loves_me_not.metrics import Message  # noqa: E402
+
+SAMPLES = ROOT / "samples"
+
+
+def build(pairs: list[tuple[str, str, str]], *, start: str = "2023-01-01 09:00:00",
+          step_minutes: int = 3) -> parser.Conversation:
+    """按 (speaker, text, ...) 快速造一份对话。"""
+    t = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+    msgs = []
+    for i, (speaker, text, _) in enumerate(pairs):
+        msgs.append(Message(index=i, speaker=speaker, timestamp=t, text=text))
+        t += timedelta(minutes=step_minutes)
+    speakers: list[str] = []
+    for m in msgs:
+        if m.speaker not in speakers:
+            speakers.append(m.speaker)
+    return parser.Conversation(messages=msgs, speakers=speakers)
+
+
+class TestSentiment(unittest.TestCase):
+    def test_positive_and_negative(self):
+        self.assertGreater(metrics.message_sentiment("我好喜欢你"), 0)
+        self.assertLess(metrics.message_sentiment("我们分手吧"), 0)
+
+    def test_neutral(self):
+        self.assertEqual(metrics.message_sentiment("今天星期三"), 0.0)
+
+    def test_negation_flips_positive(self):
+        plain = metrics.message_sentiment("我喜欢你")
+        negated = metrics.message_sentiment("我不喜欢你")
+        self.assertLess(negated, plain)
+        self.assertLess(negated, 0)
+
+    def test_intensifier_amplifies(self):
+        self.assertGreater(
+            metrics.message_sentiment("我非常想你"),
+            metrics.message_sentiment("想你"),
+        )
+
+    def test_empty_is_zero(self):
+        self.assertEqual(metrics.message_sentiment(""), 0.0)
+
+
+class TestThreadsAndDelays(unittest.TestCase):
+    def test_thread_split_on_gap(self):
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n早\n\n"
+            "2023-01-01 09:01:00 阿澈\n早\n\n"
+            "2023-01-01 20:00:00 我\n在吗\n"
+        )
+        threads = metrics.build_threads(conv.real_messages)
+        self.assertEqual(len(threads), 2)
+        self.assertEqual(threads[0][0].speaker, "我")
+        self.assertEqual(threads[1][0].speaker, "我")
+
+    def test_reply_delay_measured(self):
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n在吗\n\n"
+            "2023-01-01 09:05:00 阿澈\n在\n"
+        )
+        delays = metrics.reply_delays(conv.real_messages, "阿澈")
+        self.assertEqual(len(delays), 1)
+        self.assertAlmostEqual(delays[0], 300.0, places=1)
+
+    def test_huge_gap_not_a_reply(self):
+        # 间隔 30 小时 > MAX_REPLY_GAP，不应算作「回复」
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n在吗\n\n"
+            "2023-01-02 15:00:00 阿澈\n在\n"
+        )
+        self.assertEqual(metrics.reply_delays(conv.real_messages, "阿澈"), [])
+
+
+class TestDimensionAvailability(unittest.TestCase):
+    def test_no_intimate_terms_is_not_zero(self):
+        """全程没有亲昵称呼 → 该维度必须是「无信息」，而不是 0 分。"""
+        pairs = [("我" if i % 2 else "阿澈", "今天天气不错啊我们出去走走吧", "") for i in range(30)]
+        conv = build(pairs)
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        dim = analysis.dimensions["address"]
+        self.assertIsNone(dim.score_peer)
+        self.assertIsNone(dim.score_me)
+        self.assertFalse(dim.available)
+        self.assertIn("没有信息", dim.summary)
+
+    def test_tiny_sample_has_no_dimension_scores(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        available = [d.key for d in analysis.dimensions.values() if d.available]
+        self.assertEqual(available, [])
+
+    def test_warm_sample_has_most_dimensions(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        available = [d.key for d in analysis.dimensions.values() if d.available]
+        self.assertGreaterEqual(len(available), 6)
+
+
+class TestChoosePair(unittest.TestCase):
+    def test_two_speakers_auto(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        me, peer = metrics.choose_pair(conv, None, None)
+        self.assertEqual({me, peer}, {"我", "阿澈"})
+
+    def test_explicit_wins(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        self.assertEqual(metrics.choose_pair(conv, "阿澈", "我"), ("阿澈", "我"))
+
+    def test_only_me(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        me, peer = metrics.choose_pair(conv, "我", None)
+        self.assertEqual(me, "我")
+        self.assertEqual(peer, "阿澈")
+
+    def test_unknown_name_raises(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        with self.assertRaises(ValueError):
+            metrics.choose_pair(conv, "张三", None)
+
+
+class TestScoring(unittest.TestCase):
+    def test_weights_normalized(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        total_w = sum(result.peer.used.values())
+        self.assertAlmostEqual(total_w, 1.0, places=6)
+
+    def test_skipped_dimensions_excluded_and_renormalized(self):
+        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        # 被剔除的维度不能出现在权重里
+        for key in result.peer.skipped:
+            self.assertNotIn(key, result.peer.used)
+        self.assertAlmostEqual(sum(result.peer.used.values()), 1.0, places=6)
+
+    def test_score_within_bounds(self):
+        for name, me, peer in (
+            ("sample_wechat_warm.txt", "我", "阿澈"),
+            ("sample_wechat_cooling.txt", "我", "阿澈"),
+            ("sample_memotrace.csv", "我", "阿澈"),
+        ):
+            conv = parser.parse_file(SAMPLES / name)
+            result = scoring.score(metrics.analyze(conv, me, peer))
+            self.assertGreaterEqual(result.total, 0)
+            self.assertLessEqual(result.total, 100)
+
+    def test_insufficient_sample_flagged_and_not_strong(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
+        self.assertTrue(result.insufficient)
+        self.assertEqual(result.tier.key, "unclear")
+
+    def test_small_sample_shrinks_toward_middle(self):
+        """样本越小，原始分被拉向 50 的幅度越大。"""
+        small = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        r_small = scoring.score(metrics.analyze(small, "我", "阿澈"))
+        if r_small.peer.score is not None:
+            self.assertLess(abs(r_small.total - 50), abs(r_small.raw_total - 50) + 1e-6)
+
+    def test_warm_scores_higher_than_cooling(self):
+        """更暖的记录应当得到更高的分——打分方向不能反。"""
+        warm = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        cool = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        r_warm = scoring.score(metrics.analyze(warm, "我", "阿澈"))
+        r_cool = scoring.score(metrics.analyze(cool, "我", "阿澈"))
+        self.assertGreater(r_warm.peer.score or 0, r_cool.peer.score or 0)
+
+    def test_winners_are_consistent(self):
+        """加分项必须真的高于基准，拖后腿项必须真的低于基准。"""
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
+        for _label, s, _w in result.top_positive:
+            self.assertGreater(s, 0.5)
+        for _label, s, _w in result.top_negative:
+            self.assertLess(s, 0.5)
+
+    def test_each_tier_has_distinct_comfort(self):
+        titles = [c[0] for c in scoring.COMFORT.values()]
+        self.assertEqual(len(titles), len(set(titles)))
+        # 六个评分档 + 样本不足档
+        self.assertEqual(len(scoring.COMFORT), len(scoring.TIERS) + 1)
+
+    def test_comfort_is_gentle_not_blaming(self):
+        """安慰文案不许说教、不许指责。"""
+        forbidden = ("你应该早点", "都是你的错", "活该", "笨", "愚蠢", "自作自受")
+        for _key, (_title, body) in scoring.COMFORT.items():
+            for word in forbidden:
+                self.assertNotIn(word, body, f"{_key} 出现了指责性措辞：{word}")
+
+    def test_tier_boundaries(self):
+        self.assertEqual(scoring.tier_for(100).key, "hot")
+        self.assertEqual(scoring.tier_for(85).key, "hot")
+        self.assertEqual(scoring.tier_for(70).key, "warm")
+        self.assertEqual(scoring.tier_for(55).key, "lukewarm")
+        self.assertEqual(scoring.tier_for(40).key, "cooling")
+        self.assertEqual(scoring.tier_for(20).key, "cold")
+        self.assertEqual(scoring.tier_for(0).key, "frozen")
+
+    def test_evidence_cap_scales_with_sample(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        self.assertLessEqual(len(result.evidence), 3)
+
+    def test_evidence_deduplicated(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
+        texts = [e.text.strip() for e in result.evidence]
+        self.assertEqual(len(texts), len(set(texts)))
+
+    def test_explain_is_readable(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        text = scoring.explain(result, analysis)
+        self.assertIn("总分", text)
+        self.assertIn("权重", text)
+
+
+class TestRedaction(unittest.TestCase):
+    def test_phone_redacted(self):
+        self.assertNotIn("13812345678", report.redact("我的电话是13812345678"))
+
+    def test_id_card_redacted(self):
+        self.assertNotIn("110101199001011234", report.redact("身份证110101199001011234"))
+
+    def test_email_redacted(self):
+        self.assertNotIn("a@b.com", report.redact("邮箱 a@b.com"))
+
+    def test_normal_text_untouched(self):
+        self.assertEqual(report.redact("今天天气不错"), "今天天气不错")
+
+
+class TestReport(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.analysis = metrics.analyze(cls.conv, "我", "阿澈")
+        cls.result = scoring.score(cls.analysis)
+        cls.html = report.build_html(cls.analysis, cls.result, cls.conv.report)
+
+    def test_no_external_requests(self):
+        """单文件必须自包含：不能有任何 http(s) 引用、外链、CDN。"""
+        low = self.html.lower()
+        for bad in ("http://", "https://", "<script", "src=", "@import", "cdn."):
+            self.assertNotIn(bad, low, f"报告里出现了外部引用：{bad}")
+
+    def test_has_charset_and_viewport(self):
+        self.assertIn('<meta charset="utf-8">', self.html)
+        self.assertIn("width=device-width", self.html)
+
+    def test_contains_required_sections(self):
+        for token in ("情感投入指数", "八维雷达图", "互动趋势", "关键数据",
+                      "支撑结论的原话", "分数是怎么算出来的", "写在这里的话"):
+            self.assertIn(token, self.html)
+
+    def test_has_all_charts(self):
+        self.assertIn('class="gauge"', self.html)
+        self.assertIn('class="radar"', self.html)
+        self.assertEqual(self.html.count('class="linechart"'), 4)
+
+    def test_disclaimer_present(self):
+        self.assertIn("仅供娱乐与自我反思", self.html)
+        self.assertIn("不构成", self.html)
+
+    def test_local_processing_notice(self):
+        self.assertIn("数据只在本地处理", self.html)
+
+    def test_user_text_is_escaped(self):
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n<script>alert(1)</script>\n\n"
+            "2023-01-01 09:01:00 阿澈\n<img src=x onerror=alert(2)>\n"
+        )
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertNotIn("<script>alert(1)</script>", html)
+        self.assertNotIn("<img src=x", html)
+        self.assertIn("&lt;script&gt;", html)
+
+    def test_insufficient_banner_shown(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertIn("样本不足", html)
+
+    def test_na_dimensions_rendered_not_as_zero(self):
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        html = report.build_html(analysis, result, conv.report)
+        self.assertIn("没有参与打分", html)
+        self.assertIn("N/A", html)
+
+    def test_write_report_creates_file(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            p = report.write_report(Path(tmp) / "sub" / "r.html",
+                                    self.analysis, self.result, self.conv.report)
+            self.assertTrue(p.exists())
+            self.assertGreater(p.stat().st_size, 5000)
+
+    def test_json_output_is_valid(self):
+        payload = json.loads(report.build_json(self.analysis, self.result))
+        self.assertIn("score", payload)
+        self.assertIn("dimensions", payload)
+        self.assertEqual(len(payload["dimensions"]), 8)
+        self.assertIsInstance(payload["score"]["total"], int)
+
+
+class TestEndToEndCli(unittest.TestCase):
+    def test_analyze_creates_report(self):
+        import tempfile
+        from loves_me_not.__main__ import main
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "r.html"
+            code = main(["analyze", str(SAMPLES / "sample_wechat_cooling.txt"),
+                         "--me", "我", "--peer", "阿澈", "-o", str(out)])
+            self.assertEqual(code, 0)
+            self.assertTrue(out.exists())
+
+    def test_analyze_bad_input_returns_nonzero(self):
+        from loves_me_not.__main__ import main
+        code = main(["analyze", str(SAMPLES / "does-not-exist.txt"), "--me", "我"])
+        self.assertNotEqual(code, 0)
+
+    def test_inspect_runs(self):
+        from loves_me_not.__main__ import main
+        self.assertEqual(main(["inspect", str(SAMPLES / "sample_wechat_warm.txt")]), 0)
+
+    def test_redact_flag_runs(self):
+        import tempfile
+        from loves_me_not.__main__ import main
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "r.html"
+            code = main(["analyze", str(SAMPLES / "sample_wechat_cooling.txt"),
+                         "--me", "我", "--peer", "阿澈", "--redact", "-o", str(out)])
+            self.assertEqual(code, 0)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

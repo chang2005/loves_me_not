@@ -1,0 +1,707 @@
+{
+  "me": "我",
+  "peer": "阿澈",
+  "speakers": [
+    "阿澈",
+    "我"
+  ],
+  "is_group": false,
+  "messages": {
+    "total": 64,
+    "real": 64,
+    "me": 30,
+    "peer": 34
+  },
+  "span": {
+    "first": "2023-04-01 21:33:02",
+    "last": "2023-10-21 10:00:00",
+    "days": 203,
+    "active_days": 27
+  },
+  "score": {
+    "total": 54,
+    "raw_total": 56.98,
+    "tier": "cooling",
+    "tier_title": "已经在变淡",
+    "insufficient_sample": false,
+    "confidence": {
+      "level": "medium",
+      "label": "可信度中等",
+      "score": 0.5,
+      "reasons": [
+        "有效消息 64 条，偏少"
+      ]
+    },
+    "parts": {
+      "peer": {
+        "score": 56.98,
+        "weights": {
+          "response": 0.2222,
+          "initiative": 0.2037,
+          "length": 0.1481,
+          "question": 0.1111,
+          "address": 0.0926,
+          "ending": 0.0741,
+          "sentiment": 0.0926,
+          "latenight": 0.0556
+        },
+        "skipped": [],
+        "contributions": {
+          "response": 13.184,
+          "initiative": 15.584,
+          "length": 8.943,
+          "question": 6.947,
+          "address": 0.908,
+          "ending": 1.461,
+          "sentiment": 4.399,
+          "latenight": 5.556
+        }
+      },
+      "me": {
+        "score": 71.08,
+        "weights": {
+          "response": 0.3,
+          "initiative": 0.26,
+          "length": 0.2,
+          "question": 0.14,
+          "sentiment": 0.1
+        },
+        "skipped": [],
+        "contributions": {
+          "response": 21.355,
+          "initiative": 21.333,
+          "length": 12.054,
+          "question": 9.917,
+          "sentiment": 6.423
+        }
+      },
+      "pair": {
+        "score": 63.35,
+        "weights": {
+          "response": 0.26,
+          "initiative": 0.24,
+          "length": 0.18,
+          "question": 0.14,
+          "ending": 0.08,
+          "sentiment": 0.1
+        },
+        "skipped": [],
+        "contributions": {
+          "response": 16.966,
+          "initiative": 19.027,
+          "length": 10.857,
+          "question": 9.335,
+          "ending": 1.578,
+          "sentiment": 5.587
+        }
+      }
+    }
+  },
+  "dimensions": {
+    "response": {
+      "label": "回复间隔与响应速度",
+      "score_peer": 0.5933,
+      "score_me": 0.7118,
+      "available": true,
+      "summary": "双方回复节奏接近：TA 2 分钟，你 1 分钟。",
+      "subs": [
+        {
+          "key": "peer_median",
+          "label": "TA 的中位回复间隔",
+          "value": 125.0,
+          "score": 0.7657,
+          "display": "2 分钟",
+          "note": ""
+        },
+        {
+          "key": "me_median",
+          "label": "你的中位回复间隔",
+          "value": 83.0,
+          "score": 0.8069,
+          "display": "1 分钟",
+          "note": ""
+        },
+        {
+          "key": "peer_fast",
+          "label": "TA 的 5 分钟内回复率",
+          "value": 0.5385,
+          "score": 0.7692,
+          "display": "54%",
+          "note": ""
+        },
+        {
+          "key": "me_fast",
+          "label": "你的 5 分钟内回复率",
+          "value": 0.65,
+          "score": 0.9286,
+          "display": "65%",
+          "note": ""
+        },
+        {
+          "key": "peer_slow",
+          "label": "TA 超过 1 小时才回的比例",
+          "value": 0.3846,
+          "score": 0.2308,
+          "display": "38%",
+          "note": ""
+        },
+        {
+          "key": "me_slow",
+          "label": "你超过 1 小时才回的比例",
+          "value": 0.3,
+          "score": 0.4,
+          "display": "30%",
+          "note": ""
+        },
+        {
+          "key": "asymmetry",
+          "label": "回复速度不对称度",
+          "value": 1.506,
+          "score": 0.6073,
+          "display": "1.51×",
+          "note": "数值 = TA 的中位回复间隔 ÷ 你的"
+        }
+      ]
+    },
+    "initiative": {
+      "label": "主动发起对话次数",
+      "score_peer": 0.765,
+      "score_me": 0.8205,
+      "available": true,
+      "summary": "双方发起次数接近：30 轮里 TA 占 47%。",
+      "subs": [
+        {
+          "key": "peer_threads",
+          "label": "TA 主动开口的轮次占比",
+          "value": 0.4667,
+          "score": 0.7179,
+          "display": "47%",
+          "note": "共 30 轮（静默 6 小时算新的一轮）"
+        },
+        {
+          "key": "me_threads",
+          "label": "你主动开口的轮次占比",
+          "value": 0.5333,
+          "score": 0.8205,
+          "display": "53%",
+          "note": ""
+        },
+        {
+          "key": "peer_runs",
+          "label": "TA 的连续发言段占比",
+          "value": 0.5312,
+          "score": 0.8854,
+          "display": "53%",
+          "note": "共 64 段"
+        },
+        {
+          "key": "me_runs",
+          "label": "你的连续发言段占比",
+          "value": 0.4688,
+          "score": null,
+          "display": "47%",
+          "note": ""
+        },
+        {
+          "key": "peer_daily",
+          "label": "TA 占每日首条消息的比例",
+          "value": 0.4074,
+          "score": 0.679,
+          "display": "41%",
+          "note": "有消息的天数 27 天"
+        },
+        {
+          "key": "me_daily",
+          "label": "你占每日首条消息的比例",
+          "value": 0.5926,
+          "score": null,
+          "display": "59%",
+          "note": ""
+        },
+        {
+          "key": "cold_peer",
+          "label": "TA 的「冷启动」次数",
+          "value": 14.0,
+          "score": 0.7778,
+          "display": "14 次",
+          "note": "静默后主动开口"
+        }
+      ]
+    },
+    "length": {
+      "label": "平均字数与投入度",
+      "score_peer": 0.6036,
+      "score_me": 0.6027,
+      "available": true,
+      "summary": "双方字数相当：TA 平均 5.8 字，你 7.4 字。",
+      "subs": [
+        {
+          "key": "peer_mean",
+          "label": "TA 平均每条消息字数",
+          "value": 5.8235,
+          "score": 0.6572,
+          "display": "5.8 字",
+          "note": ""
+        },
+        {
+          "key": "me_mean",
+          "label": "你平均每条消息字数",
+          "value": 7.4333,
+          "score": 0.6061,
+          "display": "7.4 字",
+          "note": ""
+        },
+        {
+          "key": "peer_substantive",
+          "label": "TA 的实质性消息平均字数",
+          "value": 8.6875,
+          "score": 0.6057,
+          "display": "8.7 字",
+          "note": "实质性消息 16 条（≥6 字且非敷衍语）"
+        },
+        {
+          "key": "me_substantive",
+          "label": "你的实质性消息平均字数",
+          "value": 8.9524,
+          "score": 0.5993,
+          "display": "9.0 字",
+          "note": "实质性消息 21 条"
+        },
+        {
+          "key": "peer_ratio",
+          "label": "实质性消息字数比（TA ÷ 你）",
+          "value": 0.9704,
+          "score": 0.7399,
+          "display": "0.97×",
+          "note": ""
+        },
+        {
+          "key": "peer_short",
+          "label": "TA 的极短消息（≤3 字）占比",
+          "value": 0.2941,
+          "score": 0.4118,
+          "display": "29%",
+          "note": "如「嗯」「哦」「好」"
+        },
+        {
+          "key": "me_short",
+          "label": "你的极短消息占比",
+          "value": 0.1,
+          "score": null,
+          "display": "10%",
+          "note": ""
+        }
+      ]
+    },
+    "question": {
+      "label": "提问与追问比例",
+      "score_peer": 0.6252,
+      "score_me": 0.7083,
+      "available": true,
+      "summary": "你更常发问：你有 53% 的消息是提问，TA 只有 21%。",
+      "subs": [
+        {
+          "key": "peer_rate",
+          "label": "TA 的消息中提问占比",
+          "value": 0.2059,
+          "score": 0.6863,
+          "display": "21%",
+          "note": "提问 7 条 / 共 34 条"
+        },
+        {
+          "key": "me_rate",
+          "label": "你的消息中提问占比",
+          "value": 0.5333,
+          "score": 1.0,
+          "display": "53%",
+          "note": ""
+        },
+        {
+          "key": "peer_followup",
+          "label": "TA 提问后的追问率",
+          "value": 0.7143,
+          "score": 1.0,
+          "display": "71%",
+          "note": "提问后 10 分钟内继续说"
+        },
+        {
+          "key": "me_followup",
+          "label": "你的追问率",
+          "value": 0.25,
+          "score": 0.4167,
+          "display": "25%",
+          "note": ""
+        },
+        {
+          "key": "peer_unanswered",
+          "label": "TA 的提问里没被回应的比例",
+          "value": 0.2857,
+          "score": 0.4286,
+          "display": "29%",
+          "note": "2 小时内没有收到你的回复"
+        },
+        {
+          "key": "peer_ratio",
+          "label": "提问占比之比（TA ÷ 你）",
+          "value": 0.386,
+          "score": 0.386,
+          "display": "0.39×",
+          "note": ""
+        }
+      ]
+    },
+    "address": {
+      "label": "称呼与表情使用",
+      "score_peer": 0.098,
+      "score_me": 0.0,
+      "available": true,
+      "summary": "TA 最后一次叫你亲昵称呼，距今已经占了整段记录的 99%。",
+      "subs": [
+        {
+          "key": "peer_rate",
+          "label": "TA 使用亲昵称呼的消息占比",
+          "value": 0.0588,
+          "score": 0.2941,
+          "display": "6%",
+          "note": "命中 2 条"
+        },
+        {
+          "key": "me_rate",
+          "label": "你使用亲昵称呼的消息占比",
+          "value": 0.0,
+          "score": 0.0,
+          "display": "0%",
+          "note": "命中 0 条"
+        },
+        {
+          "key": "peer_emoji",
+          "label": "TA 的表情/表情包使用率",
+          "value": 0.0,
+          "score": 0.0,
+          "display": "0%",
+          "note": ""
+        },
+        {
+          "key": "me_emoji",
+          "label": "你的表情使用率",
+          "value": 0.0,
+          "score": 0.0,
+          "display": "0%",
+          "note": ""
+        },
+        {
+          "key": "peer_trend",
+          "label": "TA 的亲昵称呼随时间的变化",
+          "value": null,
+          "score": null,
+          "display": "+0.00",
+          "note": "正数=越来越亲昵，负数=在降温"
+        },
+        {
+          "key": "peer_drought",
+          "label": "TA 最后一次叫你亲昵称呼距今占比",
+          "value": 0.9897,
+          "score": 0.0,
+          "display": "99%",
+          "note": "0% = 最近还在叫，接近 100% = 很久没叫了"
+        }
+      ]
+    },
+    "ending": {
+      "label": "谁在结束对话",
+      "score_peer": 0.1972,
+      "score_me": null,
+      "available": true,
+      "summary": "多数对话由 TA 收尾（30 轮里占 67%）。",
+      "subs": [
+        {
+          "key": "peer_share",
+          "label": "TA 结束对话的比例",
+          "value": 0.6667,
+          "score": 0.3333,
+          "display": "67%",
+          "note": "共 30 轮对话"
+        },
+        {
+          "key": "me_share",
+          "label": "你结束对话的比例",
+          "value": 0.3333,
+          "score": null,
+          "display": "33%",
+          "note": ""
+        },
+        {
+          "key": "peer_drop",
+          "label": "TA 忽略你的提问、直接走开的比例",
+          "value": 0.4375,
+          "score": 0.125,
+          "display": "44%",
+          "note": "你的提问 16 次"
+        },
+        {
+          "key": "me_drop",
+          "label": "你忽略 TA 提问的比例",
+          "value": 0.2857,
+          "score": null,
+          "display": "29%",
+          "note": "TA 的提问 7 次"
+        },
+        {
+          "key": "peer_closing",
+          "label": "TA 用收尾语结束的次数",
+          "value": 1.0,
+          "score": 0.1333,
+          "display": "1 次",
+          "note": "如「晚安」「我先忙」"
+        }
+      ]
+    },
+    "latenight": {
+      "label": "深夜及特定时段活跃度",
+      "score_peer": 1.0,
+      "score_me": null,
+      "available": true,
+      "summary": "深夜（23:00–3:00）共 8 条，其中 TA 占 75%。TA 最活跃在晚上 18-24，你最活跃在晚上 18-24。",
+      "subs": [
+        {
+          "key": "peer_late_rate",
+          "label": "TA 的深夜消息占比",
+          "value": 0.1765,
+          "score": null,
+          "display": "18%",
+          "note": "23:00–3:00"
+        },
+        {
+          "key": "me_late_rate",
+          "label": "你的深夜消息占比",
+          "value": 0.0667,
+          "score": null,
+          "display": "7%",
+          "note": ""
+        },
+        {
+          "key": "late_share",
+          "label": "深夜时段里 TA 的发言占比",
+          "value": 0.75,
+          "score": 1.0,
+          "display": "75%",
+          "note": "深夜共 8 条"
+        },
+        {
+          "key": "peer_peak",
+          "label": "TA 最活跃的时段",
+          "value": null,
+          "score": null,
+          "display": "晚上 18-24",
+          "note": ""
+        },
+        {
+          "key": "me_peak",
+          "label": "你最活跃的时段",
+          "value": null,
+          "score": null,
+          "display": "晚上 18-24",
+          "note": ""
+        }
+      ]
+    },
+    "sentiment": {
+      "label": "情绪倾向随时间变化",
+      "score_peer": 0.4751,
+      "score_me": 0.6423,
+      "available": true,
+      "summary": "TA 的情绪在变冷：后半段比前半段低 0.38（平均 +0.14）。",
+      "subs": [
+        {
+          "key": "peer_mean",
+          "label": "TA 消息的平均情绪分",
+          "value": 0.1447,
+          "score": 0.5723,
+          "display": "+0.14",
+          "note": "范围 -1（冷）~ +1（暖）"
+        },
+        {
+          "key": "me_mean",
+          "label": "你的平均情绪分",
+          "value": 0.0547,
+          "score": 0.5273,
+          "display": "+0.05",
+          "note": ""
+        },
+        {
+          "key": "peer_trend",
+          "label": "TA 的情绪走向",
+          "value": -0.3775,
+          "score": 0.0,
+          "display": "-0.38",
+          "note": "后半段平均 − 前半段平均；负数=在变冷"
+        },
+        {
+          "key": "me_trend",
+          "label": "你的情绪走向",
+          "value": 0.1287,
+          "score": 0.7574,
+          "display": "+0.13",
+          "note": ""
+        },
+        {
+          "key": "peer_hard",
+          "label": "TA 的强负向消息占比",
+          "value": 0.0294,
+          "score": 0.8529,
+          "display": "3%",
+          "note": "情绪分 ≤ -0.5，如吵架、冷淡"
+        }
+      ]
+    }
+  },
+  "periods": [
+    {
+      "label": "4/1",
+      "start": "2023-04-01 21:33:02",
+      "total": 27,
+      "me": 11,
+      "peer": 16,
+      "initiative_me": 1,
+      "initiative_peer": 5,
+      "sentiment_me": 0.0413,
+      "sentiment_peer": 0.3105,
+      "reply_median_me_sec": 79.0,
+      "reply_median_peer_sec": 40.0
+    },
+    {
+      "label": "5/1",
+      "start": "2023-05-01 21:33:02",
+      "total": 4,
+      "me": 2,
+      "peer": 2,
+      "initiative_me": 1,
+      "initiative_peer": 0,
+      "sentiment_me": 0.0,
+      "sentiment_peer": 0.35,
+      "reply_median_me_sec": 40.0,
+      "reply_median_peer_sec": 100.0
+    },
+    {
+      "label": "5/31",
+      "start": "2023-05-31 21:33:02",
+      "total": 6,
+      "me": 3,
+      "peer": 3,
+      "initiative_me": 1,
+      "initiative_peer": 0,
+      "sentiment_me": -0.2,
+      "sentiment_peer": 0.3333,
+      "reply_median_me_sec": 60.0,
+      "reply_median_peer_sec": 2640.0
+    },
+    {
+      "label": "6/30",
+      "start": "2023-06-30 21:33:02",
+      "total": 3,
+      "me": 2,
+      "peer": 1,
+      "initiative_me": 2,
+      "initiative_peer": 0,
+      "sentiment_me": -0.15,
+      "sentiment_peer": -0.3449,
+      "reply_median_me_sec": 37200.0,
+      "reply_median_peer_sec": 9000.0
+    },
+    {
+      "label": "7/30",
+      "start": "2023-07-30 21:33:02",
+      "total": 4,
+      "me": 2,
+      "peer": 2,
+      "initiative_me": 2,
+      "initiative_peer": 1,
+      "sentiment_me": 0.0875,
+      "sentiment_peer": -0.1338,
+      "reply_median_me_sec": 31800.0,
+      "reply_median_peer_sec": 25200.0
+    },
+    {
+      "label": "8/29",
+      "start": "2023-08-29 21:33:02",
+      "total": 4,
+      "me": 2,
+      "peer": 2,
+      "initiative_me": 1,
+      "initiative_peer": 1,
+      "sentiment_me": 0.65,
+      "sentiment_peer": 0.1262,
+      "reply_median_me_sec": 60.0,
+      "reply_median_peer_sec": 32370.0
+    },
+    {
+      "label": "9/28",
+      "start": "2023-09-28 21:33:02",
+      "total": 16,
+      "me": 8,
+      "peer": 8,
+      "initiative_me": 8,
+      "initiative_peer": 7,
+      "sentiment_me": 0.0762,
+      "sentiment_peer": -0.1737,
+      "reply_median_me_sec": 36900.0,
+      "reply_median_peer_sec": 43200.0
+    }
+  ],
+  "evidence": [
+    {
+      "speaker": "阿澈",
+      "time": "2023-04-02 08:23:10",
+      "text": "嗯 想你",
+      "reason": "TA 最快的一次回复（间隔 26 秒）"
+    },
+    {
+      "speaker": "阿澈",
+      "time": "2023-10-09 20:00:00",
+      "text": "没什么",
+      "reason": "TA 最慢的一次回复（间隔 23.0 小时）"
+    },
+    {
+      "speaker": "阿澈",
+      "time": "2023-04-02 08:12:30",
+      "text": "早安宝宝",
+      "reason": "TA 叫你「宝宝」"
+    },
+    {
+      "speaker": "阿澈",
+      "time": "2023-04-03 23:45:09",
+      "text": "好 晚安宝贝",
+      "reason": "TA 叫你「宝贝」"
+    },
+    {
+      "speaker": "阿澈",
+      "time": "2023-04-01 21:35:40",
+      "text": "好 早点休息",
+      "reason": "这一轮由 TA 收尾"
+    },
+    {
+      "speaker": "我",
+      "time": "2023-07-16 09:00:00",
+      "text": "那你忙吧",
+      "reason": "这一轮由你收尾"
+    },
+    {
+      "speaker": "我",
+      "time": "2023-08-21 08:00:00",
+      "text": "你是不是不想见我了",
+      "reason": "这一轮由你收尾"
+    },
+    {
+      "speaker": "阿澈",
+      "time": "2023-04-01 21:33:02",
+      "text": "到家了跟我说一声",
+      "reason": "TA 主动开启的一轮对话"
+    }
+  ],
+  "caveats": [],
+  "comfort": {
+    "title": "你没有做错什么",
+    "body": "数据里有很多你主动的痕迹：你在开口，你在追问，你在收尾之后还想再说一句。而回应在变薄。\n\n我想说的是——这不是因为你不够好，也不是因为你不够努力。感情里的热度是会变的，它不总是谁的错，有时候只是两个人走的节奏不一样了。\n\n你可以再试一次，认真地、不指责地把你的感受说出来。如果他接住了，那是好事；如果没有，那你至少知道了答案，而答案比反复猜测要轻得多。\n\n无论结果如何，你值得一个会主动想起你的人。这一点不因为他的选择而改变。"
+  },
+  "disclaimer": "本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。"
+}

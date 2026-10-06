@@ -189,7 +189,8 @@ def _score_part(
             continue
         score = dim.score_peer if name != "me" else dim.score_me
         if name == "pair":
-            # 双向视角：取双方可得分的平均；只有一方可得就用那一方
+            # 双向视角：能拿到双方分数就取平均；只有一方可得就用那一方，
+            # 不要拿一个不存在的 0 去把对方拉平。
             pair_scores = [s for s in (dim.score_peer, dim.score_me) if s is not None]
             score = mean(pair_scores) if pair_scores else None
         if score is None:
@@ -442,20 +443,22 @@ def score(analysis: Analysis) -> ScoreResult:
     top_positive = pack(lift_keys)
     top_negative = pack(drag_keys)
 
-    # 证据挑选：优先「回复速度」「称呼」「收尾」这些最能说明问题的维度
+    # 证据挑选：优先「回复速度」「称呼」「收尾」这些最能说明问题的维度。
+    # 同一句话可能同时命中「收尾」和「最后一次叫你宝贝」，按文本去重，
+    # 否则证据区会被重复原话占满。
     priority = ("response", "address", "ending", "initiative", "sentiment", "question", "length")
     evidence: list[Evidence] = []
-    seen: set[str] = set()
+    seen_text: set[str] = set()
     cap = _evidence_cap(analysis)
     for key in priority:
         dim = analysis.dimensions.get(key)
         if not dim:
             continue
         for ev in dim.evidence:
-            sig = f"{ev.speaker}|{ev.text[:30]}|{ev.reason[:20]}"
-            if sig in seen or not ev.text.strip():
+            text_key = ev.text.strip()[:40]
+            if not text_key or text_key in seen_text:
                 continue
-            seen.add(sig)
+            seen_text.add(text_key)
             evidence.append(ev)
             if len(evidence) >= cap:
                 break

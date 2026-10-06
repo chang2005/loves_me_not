@@ -113,6 +113,12 @@ class Dimension:
     evidence: list[Evidence] = field(default_factory=list)
     #: 人话版的不对称描述，例如「TA 平均比你慢 12 倍」
     asymmetry: str = ""
+    #: 雷达图等窄版式用的短名（长名会把标签挤出画布）
+    short: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.short:
+            self.short = self.label
 
     @property
     def available(self) -> bool:
@@ -481,6 +487,7 @@ def dimension_response(messages: Sequence[Message], me: str, peer: str) -> Dimen
     return Dimension(
         key="response",
         label="回复间隔与响应速度",
+        short="回复速度",
         score_peer=_aggregate_subs(subs, ("peer_median", "peer_fast", "peer_slow", "asymmetry")),
         score_me=_aggregate_subs(subs, ("me_median", "me_fast", "me_slow")),
         summary=summary,
@@ -607,6 +614,7 @@ def dimension_initiative(messages: Sequence[Message], me: str, peer: str) -> Dim
     return Dimension(
         key="initiative",
         label="主动发起对话次数",
+        short="主动发起",
         score_peer=_aggregate_subs(subs, ("peer_threads", "peer_runs", "peer_daily", "cold_peer")),
         score_me=_aggregate_subs(subs, ("me_threads", "me_runs", "me_daily")),
         summary=summary,
@@ -670,8 +678,7 @@ def dimension_length(messages: Sequence[Message], me: str, peer: str) -> Dimensi
         SubMetric("peer_short", "TA 的极短消息（≤3 字）占比", p_short,
                   _clamp(1.0 - (p_short or 0) / 0.5) if (p_short is not None and enough) else None,
                   f"{p_short * 100:.0f}%" if p_short is not None else "—",
-                  note='如「嗯」「哦」「好」'),
-        SubMetric("me_short", "你的极短消息占比", m_short,
+                  note='如「嗯」「哦」「好」'),        SubMetric("me_short", "你的极短消息占比", m_short,
                   None, f"{m_short * 100:.0f}%" if m_short is not None else "—"),
     ]
 
@@ -708,6 +715,7 @@ def dimension_length(messages: Sequence[Message], me: str, peer: str) -> Dimensi
     return Dimension(
         key="length",
         label="平均字数与投入度",
+        short="平均字数",
         score_peer=_aggregate_subs(subs, ("peer_mean", "peer_substantive", "peer_ratio", "peer_short")),
         score_me=_aggregate_subs(subs, ("me_mean", "me_substantive", "me_short")),
         summary=summary,
@@ -815,6 +823,7 @@ def dimension_question(messages: Sequence[Message], me: str, peer: str) -> Dimen
     return Dimension(
         key="question",
         label="提问与追问比例",
+        short="提问追问",
         score_peer=_aggregate_subs(subs, ("peer_rate", "peer_followup", "peer_unanswered", "peer_ratio")),
         score_me=_aggregate_subs(subs, ("me_rate", "me_followup")),
         summary=summary,
@@ -903,9 +912,15 @@ def dimension_address(messages: Sequence[Message], me: str, peer: str) -> Dimens
 
     p_drought = recent_drought(p_terms)
 
-    # 亲昵称呼「有没有出现在数据里」决定了这个维度可不可用
+    # 这个维度什么时候「有信息」？
+    #   - 记录里出现过亲昵称呼（任何一方）；或者
+    #   - 至少一方真的在用表情。
+    # 两者都没有，而且双方表情率都是 0，说明「表情」这条线索本身不可得
+    # （很多导出格式根本不留表情），此时给 0 分就是在冤枉人——必须判为无信息。
     has_any_intimate = bool(p_terms or m_terms)
-    enough = len(real) >= 20
+    has_emoji_signal = (p_emoji or 0) > 0 or (m_emoji or 0) > 0
+    informative = has_any_intimate or has_emoji_signal
+    enough = len(real) >= 20 and informative
 
     subs = [
         SubMetric("peer_rate", "TA 使用亲昵称呼的消息占比", p_rate,
@@ -940,11 +955,17 @@ def dimension_address(messages: Sequence[Message], me: str, peer: str) -> Dimens
     for m, term, _tier in m_terms[:1]:
         evidence.append(Evidence(me, m.timestamp, m.text, f"你叫 TA「{term}」"))
 
-    if not has_any_intimate:
-        # 关键：没出现过亲昵称呼 ≠ 不爱。这是「无信息」，必须剔除而不是给 0 分。
-        summary = "整段记录里没有出现过任何亲昵称呼——这一项没有信息，不参与打分。"
+    if not informative:
+        # 关键：没出现过亲昵称呼 ≠ 不爱；连表情都没有 ≠ 冷淡。
+        # 这是「这一项没有信息」，必须剔除而不是给 0 分。
+        summary = ("整段记录里既没有亲昵称呼、也没有表情使用——"
+                   "这一项没有信息，不参与打分。")
     elif not enough:
         summary = f"消息量偏少（{len(real)} 条），称呼趋势仅供参考。"
+    elif not has_any_intimate and has_emoji_signal:
+        summary = (f"整段记录里没有亲昵称呼，但表情用得不少"
+                   f"（TA {p_emoji * 100:.0f}% / 你 {m_emoji * 100:.0f}%）——"
+                   "看来你们的表达方式不靠称呼。")
     elif p_rate is not None and p_rate == 0:
         summary = "TA 在这段记录里从未用亲昵称呼叫你，你叫过 TA。"
     elif p_trend is not None and p_trend < -0.1:
@@ -959,6 +980,7 @@ def dimension_address(messages: Sequence[Message], me: str, peer: str) -> Dimens
     return Dimension(
         key="address",
         label="称呼与表情使用",
+        short="称呼表情",
         score_peer=_aggregate_subs(subs, ("peer_rate", "peer_emoji", "peer_trend", "peer_drought")),
         score_me=_aggregate_subs(subs, ("me_rate", "me_emoji")),
         summary=summary,
@@ -1065,6 +1087,7 @@ def dimension_ending(messages: Sequence[Message], me: str, peer: str) -> Dimensi
     return Dimension(
         key="ending",
         label="谁在结束对话",
+        short="谁在收尾",
         score_peer=_aggregate_subs(subs, ("peer_share", "peer_drop", "peer_closing")),
         score_me=_aggregate_subs(subs, ("me_share", "me_drop")),
         summary=summary,
@@ -1153,6 +1176,7 @@ def dimension_latenight(messages: Sequence[Message], me: str, peer: str) -> Dime
     return Dimension(
         key="latenight",
         label="深夜及特定时段活跃度",
+        short="深夜活跃",
         # 只把「深夜里谁更主动」计入打分；深夜本身不是好坏指标
         score_peer=_aggregate_subs(subs, ("late_share",)),
         score_me=None,
@@ -1246,6 +1270,7 @@ def dimension_sentiment(messages: Sequence[Message], me: str, peer: str,
     return Dimension(
         key="sentiment",
         label="情绪倾向随时间变化",
+        short="情绪走向",
         score_peer=_aggregate_subs(subs, ("peer_mean", "peer_trend", "peer_hard")),
         score_me=_aggregate_subs(subs, ("me_mean", "me_trend")),
         summary=summary,

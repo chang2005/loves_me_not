@@ -1,17 +1,30 @@
-# 真实聊天记录：不进入版本库（隐私红线）
+# 隐私红线：真实聊天记录绝不进入版本库
 data/
 samples/local/
 *.local.txt
 *.local.csv
+*.local.json
 
-# 生成的报告与中间产物
+# 运行时产物（demo/ 是刻意提交的示例报告，不在此列）
 out/
+/report.html
 *.report.html
+
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# 编辑器 / 环境
 .venv/
 venv/
 .DS_Store
 .idea/
 .vscode/
+
+# 开发期临时脚本（以点开头，用于本地排查）
+.probe_*.py
+.debug_*.py
+.smoke_*.py
+.measure_*.py
+.split_*.py
