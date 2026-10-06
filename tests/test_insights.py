@@ -95,7 +95,7 @@ class TestSessionsAndSilence(unittest.TestCase):
         self.assertAlmostEqual(silences[0].days, 2.0, places=1)
 
     def test_longest_session_and_silence(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         sessions = insights.build_sessions(conv.real_messages)
         silences = insights.build_silences(sessions)
         days = insights.build_days(conv.real_messages, "我", "阿澈", sessions)
@@ -139,7 +139,7 @@ class TestDayDurationHonesty(unittest.TestCase):
 class TestQuantifiers(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.sessions = insights.build_sessions(cls.conv.real_messages)
         cls.silences = insights.build_silences(cls.sessions)
         cls.quant = insights.compute_quantifiers(
@@ -169,7 +169,7 @@ class TestQuantifiers(unittest.TestCase):
 
     def test_unavailable_metric_not_scored_zero(self):
         """样本不足的子指标必须 score=None，而不是 0。"""
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         sessions = insights.build_sessions(conv.real_messages)
         silences = insights.build_silences(sessions)
         q = insights.compute_quantifiers(conv.real_messages, sessions, silences, "阿澈")
@@ -206,7 +206,7 @@ class TestQuantifiers(unittest.TestCase):
 class TestFootprint(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.sessions = insights.build_sessions(cls.conv.real_messages)
         cls.silences = insights.build_silences(cls.sessions)
         cls.days = insights.build_days(cls.conv.real_messages, "我", "阿澈", cls.sessions)
@@ -242,7 +242,7 @@ class TestFootprint(unittest.TestCase):
 class TestTimeline(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.sessions = insights.build_sessions(cls.conv.real_messages)
         cls.silences = insights.build_silences(cls.sessions)
         cls.days = insights.build_days(cls.conv.real_messages, "我", "阿澈", cls.sessions)
@@ -269,7 +269,7 @@ class TestTimeline(unittest.TestCase):
 
 class TestTopics(unittest.TestCase):
     def test_extracts_sensible_topics(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         topics = timeline.extract_topics(conv.real_messages, "我", "阿澈")
         self.assertGreater(len(topics), 5)
         words = {t.word for t in topics}
@@ -277,7 +277,7 @@ class TestTopics(unittest.TestCase):
         self.assertTrue(words & {"晚安", "加班", "外卖", "见面", "想你", "咖啡"})
 
     def test_weights_normalized(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         topics = timeline.extract_topics(conv.real_messages, "我", "阿澈")
         self.assertAlmostEqual(max(t.weight for t in topics), 1.0, places=2)
         for t in topics:
@@ -285,7 +285,7 @@ class TestTopics(unittest.TestCase):
             self.assertLessEqual(t.weight, 1.0)
 
     def test_no_pure_pronoun_fragments(self):
-        for name in ("sample_wechat_cooling.txt", "sample_wechat_warm.txt"):
+        for name in ("demo_two_block_cooling.txt", "demo_two_block_warm.txt"):
             conv = parser.parse_file(SAMPLES / name)
             topics = timeline.extract_topics(conv.real_messages, "我", "阿澈")
             for t in topics:
@@ -296,7 +296,7 @@ class TestTopics(unittest.TestCase):
         self.assertEqual(timeline.extract_topics([], "我", "阿澈"), [])
 
     def test_dominant_speaker_attributed(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         topics = timeline.extract_topics(conv.real_messages, "我", "阿澈")
         for t in topics:
             self.assertIn(t.dominant, (None, "我", "阿澈"))
@@ -305,7 +305,7 @@ class TestTopics(unittest.TestCase):
 class TestPersona(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         cls.sessions = insights.build_sessions(cls.conv.real_messages)
         cls.silences = insights.build_silences(cls.sessions)
         cls.days = insights.build_days(cls.conv.real_messages, "我", "阿澈", cls.sessions)
@@ -344,7 +344,7 @@ class TestPersona(unittest.TestCase):
 class TestVisuals(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.analysis = metrics.analyze(cls.conv, "我", "阿澈")
         cls.result = scoring.score(cls.analysis)
 
@@ -407,7 +407,7 @@ class TestPersonalNote(unittest.TestCase):
         return analysis, result, analysis.personal_note
 
     def test_generated_from_real_data(self):
-        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        analysis, _r, note = self._note("demo_two_block_cooling.txt")
         self.assertIsNotNone(note, "这份记录应当能挑出一条专属观察")
         self.assertTrue(note.headline.strip())
         self.assertTrue(note.support.strip())
@@ -418,7 +418,7 @@ class TestPersonalNote(unittest.TestCase):
     def test_based_on_is_a_real_metric(self):
         """依据必须指向真实存在的指标名，不能是编出来的词。"""
         from loves_me_not import insights as _ins
-        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        analysis, _r, note = self._note("demo_two_block_cooling.txt")
         valid = {"回复速度", "每 5 分钟发消息次数", "深夜发消息次数",
                  "打破僵局次数", "最后发言次数", "聊得最多的月份",
                  "最长的一次聊天", "主动发起对话次数", "关键节点",
@@ -428,7 +428,7 @@ class TestPersonalNote(unittest.TestCase):
 
     def test_numbers_in_headline_are_consistent(self):
         """文案里的数字必须与真实统计对得上，不能夸大。"""
-        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        analysis, _r, note = self._note("demo_two_block_cooling.txt")
         # 「冷过 N 次」的 N 必须等于真实的长时间沉默总数
         if "冷过" in note.headline:
             m = re.search(r"冷过\s*(\d+)\s*次", note.headline)
@@ -441,7 +441,7 @@ class TestPersonalNote(unittest.TestCase):
 
     def test_icebreak_wording_matches_share(self):
         """「每一次都是他」与「其中几次是他」不能混用。"""
-        analysis, _r, note = self._note("sample_wechat_cooling.txt")
+        analysis, _r, note = self._note("demo_two_block_cooling.txt")
         if "先开口" in note.headline or "先低头" in note.headline:
             big = [g for g in analysis.silences
                    if g.length.total_seconds() >= 86400 and g.broken_by]
@@ -454,19 +454,19 @@ class TestPersonalNote(unittest.TestCase):
 
     def test_tiny_sample_yields_no_note(self):
         """样本太小时不许硬编一句话出来。"""
-        _a, _r, note = self._note("sample_tiny.txt")
+        _a, _r, note = self._note("demo_too_short.txt")
         self.assertIsNone(note)
 
     def test_different_records_get_different_notes(self):
         """不同记录应当得到不同的专属文案——否则「个性化」是假的。"""
-        _a1, _r1, n1 = self._note("sample_wechat_cooling.txt")
-        _a2, _r2, n2 = self._note("sample_wechat_pc_paste.txt")
+        _a1, _r1, n1 = self._note("demo_two_block_cooling.txt")
+        _a2, _r2, n2 = self._note("demo_paste_oneline.txt")
         self.assertIsNotNone(n1)
         self.assertIsNotNone(n2)
         self.assertNotEqual(n1.headline, n2.headline)
 
     def test_note_rendered_into_report(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -475,7 +475,7 @@ class TestPersonalNote(unittest.TestCase):
         self.assertIn("只属于这份记录的一句话", html)
 
     def test_report_without_note_still_renders(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -484,7 +484,7 @@ class TestPersonalNote(unittest.TestCase):
 
     def test_generation_failure_is_surfaced_not_swallowed(self):
         """生成失败时要留下痕迹，不能静默吞掉（曾经因此漏掉一个 NameError）。"""
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         before = len(analysis.caveats)
         with unittest.mock.patch.object(
@@ -503,7 +503,7 @@ def esc(x):
 class TestReportIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.analysis = metrics.analyze(cls.conv, "我", "阿澈")
         cls.result = scoring.score(cls.analysis)
         cls.html = report.build_html(cls.analysis, cls.result, cls.conv.report)
@@ -540,7 +540,7 @@ class TestReportIntegration(unittest.TestCase):
         """进度环的 dasharray 长度必须与分数成比例，且不超出圆周长。"""
         import math as _math
         import re as _re
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         g = report.render_gauge(result.total, "#b4576f", "测试")
@@ -578,7 +578,7 @@ class TestReportIntegration(unittest.TestCase):
         self.assertGreater(len(payload["topics"]), 0)
 
     def test_tiny_sample_report_does_not_crash(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -586,7 +586,7 @@ class TestReportIntegration(unittest.TestCase):
         self.assertIn("无法计算", html)
 
     def test_swapped_subject_report_does_not_crash(self):
-        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        conv = parser.parse_file(SAMPLES / "demo_table.csv")
         analysis = metrics.analyze(conv, "阿澈", "我")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -594,7 +594,7 @@ class TestReportIntegration(unittest.TestCase):
 
     def test_nav_titles_adapt_to_peer_name(self):
         """导航里的人名标题要跟着数据走，不能写死。"""
-        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        conv = parser.parse_file(SAMPLES / "demo_table.csv")
         analysis = metrics.analyze(conv, "阿澈", "我")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)

@@ -108,20 +108,20 @@ class TestDimensionAvailability(unittest.TestCase):
         self.assertIn("没有信息", dim.summary)
 
     def test_tiny_sample_has_no_dimension_scores(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         available = [d.key for d in analysis.dimensions.values() if d.available]
         self.assertEqual(available, [])
 
     def test_warm_sample_has_most_dimensions(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         available = [d.key for d in analysis.dimensions.values() if d.available]
         self.assertGreaterEqual(len(available), 6)
 
     def test_cards_do_not_assert_unreliable_numbers(self):
         """样本不足时，关键数据卡片不能把被剔除的统计量当事实展示。"""
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         cards = {title: (value, sub) for title, value, sub in analysis.cards}
         for title in ("中位回复间隔", "TA 主动发起占比", "实质性字数比",
@@ -137,7 +137,7 @@ class TestDimensionAvailability(unittest.TestCase):
         self.assertEqual(cards["有效消息"][0], "5 条")
 
     def test_cards_show_values_when_sample_is_sufficient(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         cards = {title: value for title, value, _sub in analysis.cards}
         for title in ("中位回复间隔", "TA 主动发起占比", "TA 收尾占比"):
@@ -146,36 +146,36 @@ class TestDimensionAvailability(unittest.TestCase):
 
 class TestChoosePair(unittest.TestCase):
     def test_two_speakers_auto(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         me, peer = metrics.choose_pair(conv, None, None)
         self.assertEqual({me, peer}, {"我", "阿澈"})
 
     def test_explicit_wins(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         self.assertEqual(metrics.choose_pair(conv, "阿澈", "我"), ("阿澈", "我"))
 
     def test_only_me(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         me, peer = metrics.choose_pair(conv, "我", None)
         self.assertEqual(me, "我")
         self.assertEqual(peer, "阿澈")
 
     def test_unknown_name_raises(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         with self.assertRaises(ValueError):
             metrics.choose_pair(conv, "张三", None)
 
 
 class TestScoring(unittest.TestCase):
     def test_weights_normalized(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         total_w = sum(result.peer.used.values())
         self.assertAlmostEqual(total_w, 1.0, places=6)
 
     def test_skipped_dimensions_excluded_and_renormalized(self):
-        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        conv = parser.parse_file(SAMPLES / "demo_table.csv")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         # 被剔除的维度不能出现在权重里
@@ -185,9 +185,9 @@ class TestScoring(unittest.TestCase):
 
     def test_score_within_bounds(self):
         for name, me, peer in (
-            ("sample_wechat_warm.txt", "我", "阿澈"),
-            ("sample_wechat_cooling.txt", "我", "阿澈"),
-            ("sample_memotrace.csv", "我", "阿澈"),
+            ("demo_two_block_warm.txt", "我", "阿澈"),
+            ("demo_two_block_cooling.txt", "我", "阿澈"),
+            ("demo_table.csv", "我", "阿澈"),
         ):
             conv = parser.parse_file(SAMPLES / name)
             result = scoring.score(metrics.analyze(conv, me, peer))
@@ -195,29 +195,29 @@ class TestScoring(unittest.TestCase):
             self.assertLessEqual(result.total, 100)
 
     def test_insufficient_sample_flagged_and_not_strong(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
         self.assertTrue(result.insufficient)
         self.assertEqual(result.tier.key, "unclear")
 
     def test_small_sample_shrinks_toward_middle(self):
         """样本越小，原始分被拉向 50 的幅度越大。"""
-        small = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
+        small = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
         r_small = scoring.score(metrics.analyze(small, "我", "阿澈"))
         if r_small.peer.score is not None:
             self.assertLess(abs(r_small.total - 50), abs(r_small.raw_total - 50) + 1e-6)
 
     def test_warm_scores_higher_than_cooling(self):
         """更暖的记录应当得到更高的分——打分方向不能反。"""
-        warm = parser.parse_file(SAMPLES / "sample_wechat_warm.txt")
-        cool = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        warm = parser.parse_file(SAMPLES / "demo_two_block_warm.txt")
+        cool = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         r_warm = scoring.score(metrics.analyze(warm, "我", "阿澈"))
         r_cool = scoring.score(metrics.analyze(cool, "我", "阿澈"))
         self.assertGreater(r_warm.peer.score or 0, r_cool.peer.score or 0)
 
     def test_winners_are_consistent(self):
         """加分项必须真的高于基准，拖后腿项必须真的低于基准。"""
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
         for _label, s, _w in result.top_positive:
             self.assertGreater(s, 0.5)
@@ -247,19 +247,19 @@ class TestScoring(unittest.TestCase):
         self.assertEqual(scoring.tier_for(0).key, "frozen")
 
     def test_evidence_cap_scales_with_sample(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         self.assertLessEqual(len(result.evidence), 3)
 
     def test_evidence_deduplicated(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         result = scoring.score(metrics.analyze(conv, "我", "阿澈"))
         texts = [e.text.strip() for e in result.evidence]
         self.assertEqual(len(texts), len(set(texts)))
 
     def test_explain_is_readable(self):
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         text = scoring.explain(result, analysis)
@@ -273,7 +273,7 @@ class TestScoring(unittest.TestCase):
         TypeError 崩掉。这里锁住这个行为。
         """
         for me, peer in (("我", "阿澈"), ("阿澈", "我")):
-            conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+            conv = parser.parse_file(SAMPLES / "demo_table.csv")
             analysis = metrics.analyze(conv, me, peer)
             result = scoring.score(analysis)
             html = report.build_html(analysis, result, conv.report)
@@ -282,7 +282,7 @@ class TestScoring(unittest.TestCase):
 
     def test_scores_used_matches_contributions(self):
         """每个维度的贡献必须等于「采用分数 × 归一化权重」，账要能对上。"""
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         for part in (result.peer, result.me, result.pair):
@@ -292,7 +292,7 @@ class TestScoring(unittest.TestCase):
 
     def test_pair_falls_back_to_single_side(self):
         """只有一方可得分的维度，双向视角不该被不存在的 0 拉平。"""
-        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         pair = result.pair.scores_used
@@ -370,7 +370,7 @@ class TestRedaction(unittest.TestCase):
 class TestReport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        cls.conv = parser.parse_file(SAMPLES / "demo_two_block_cooling.txt")
         cls.analysis = metrics.analyze(cls.conv, "我", "阿澈")
         cls.result = scoring.score(cls.analysis)
         cls.html = report.build_html(cls.analysis, cls.result, cls.conv.report)
@@ -527,7 +527,7 @@ class TestReport(unittest.TestCase):
         self.assertIn("&lt;script&gt;", html)
 
     def test_insufficient_banner_shown(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -535,7 +535,7 @@ class TestReport(unittest.TestCase):
 
     def test_assumed_subject_warning(self):
         """没给 --me 时，报告必须显著提示「我」是推断出来的。"""
-        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        conv = parser.parse_file(SAMPLES / "demo_table.csv")
         analysis = metrics.analyze(conv, "阿澈", "我")
         result = scoring.score(analysis)
         warn_html = report.build_html(analysis, result, conv.report, assumed=True)
@@ -544,7 +544,7 @@ class TestReport(unittest.TestCase):
         self.assertNotIn("请先确认「我」是谁", calm_html)
 
     def test_na_dimensions_rendered_not_as_zero(self):
-        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parser.parse_file(SAMPLES / "demo_too_short.txt")
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
@@ -615,7 +615,7 @@ class TestEndToEndCli(unittest.TestCase):
         from loves_me_not.__main__ import main
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "r.html"
-            code = main(["analyze", str(SAMPLES / "sample_wechat_cooling.txt"),
+            code = main(["analyze", str(SAMPLES / "demo_two_block_cooling.txt"),
                          "--me", "我", "--peer", "阿澈", "-o", str(out)])
             self.assertEqual(code, 0)
             self.assertTrue(out.exists())
@@ -627,14 +627,14 @@ class TestEndToEndCli(unittest.TestCase):
 
     def test_inspect_runs(self):
         from loves_me_not.__main__ import main
-        self.assertEqual(main(["inspect", str(SAMPLES / "sample_wechat_warm.txt")]), 0)
+        self.assertEqual(main(["inspect", str(SAMPLES / "demo_two_block_warm.txt")]), 0)
 
     def test_redact_flag_runs(self):
         import tempfile
         from loves_me_not.__main__ import main
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "r.html"
-            code = main(["analyze", str(SAMPLES / "sample_wechat_cooling.txt"),
+            code = main(["analyze", str(SAMPLES / "demo_two_block_cooling.txt"),
                          "--me", "我", "--peer", "阿澈", "--redact", "-o", str(out)])
             self.assertEqual(code, 0)
 

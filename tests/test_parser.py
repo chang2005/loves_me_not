@@ -183,7 +183,7 @@ class TestTextFormats(unittest.TestCase):
 
 class TestCsv(unittest.TestCase):
     def test_memotrace_like(self):
-        conv = parse_file(SAMPLES / "sample_memotrace.csv")
+        conv = parse_file(SAMPLES / "demo_table.csv")
         self.assertEqual(len(conv.messages), 39)
         self.assertEqual(set(conv.speakers), {"阿澈", "我"})
         self.assertEqual(conv.messages[0].speaker, "阿澈")
@@ -219,33 +219,40 @@ class TestCsv(unittest.TestCase):
 
 
     def test_sample_files_all_parse(self):
-        """samples/ 下每个文件都必须能被解析——它们是文档与 demo 的来源。"""
-        files = sorted(SAMPLES.glob("sample_*"))
-        self.assertGreaterEqual(len(files), 5)
+        """samples/ 下每个数据文件都必须能被解析——它们是文档与 demo 的来源。
+
+        用 ``demo_*`` 前缀而不是逐个硬编文件名：以后加一个示例就会自动被覆盖到。
+        目录里允许有 README 之类的说明文件，所以按扩展名过滤。
+        """
+        files = sorted(
+            f for f in SAMPLES.glob("demo_*")
+            if f.suffix.lower() in (".txt", ".csv", ".log", ".json")
+        )
+        self.assertGreaterEqual(len(files), 5, f"示例数据太少：{[f.name for f in files]}")
         for f in files:
             with self.subTest(file=f.name):
                 conv = parse_file(f)
-                self.assertGreater(len(conv.messages), 0)
-                self.assertTrue(conv.speakers)
+                self.assertGreater(len(conv.messages), 0, f"{f.name} 没解析出消息")
+                self.assertTrue(conv.speakers, f"{f.name} 没解析出说话人")
 
 
 class TestWechatPcPaste(unittest.TestCase):
     """微信 PC 端「复制」出来的格式：``昵称  日期 时间``（两个空格）。"""
 
     def test_parses_fully(self):
-        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        conv = parse_file(SAMPLES / "demo_paste_oneline.txt")
         self.assertEqual(set(conv.speakers), {"阿澈", "我"})
         self.assertEqual(conv.messages[0].speaker, "阿澈")
         self.assertEqual(conv.messages[0].text, "今天加班到好晚")
         self.assertEqual(conv.messages[0].timestamp, datetime(2023, 11, 5, 22, 14, 3))
 
     def test_retracted_message_is_system(self):
-        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        conv = parse_file(SAMPLES / "demo_paste_oneline.txt")
         self.assertEqual(sum(1 for m in conv.messages if m.is_system), 1)
 
     def test_no_text_leaked_into_speaker_names(self):
         """正文绝不能被当成昵称——这会静默毁掉整份报告。"""
-        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        conv = parse_file(SAMPLES / "demo_paste_oneline.txt")
         for m in conv.messages:
             self.assertIn(m.speaker, {"阿澈", "我"},
                           f"出现了非预期说话人：{m.speaker!r}")
@@ -255,20 +262,20 @@ class TestWechatPcPaste(unittest.TestCase):
 
 class TestSampleFiles(unittest.TestCase):
     def test_cooling_sample_parses(self):
-        conv = parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        conv = parse_file(SAMPLES / "demo_two_block_cooling.txt")
         self.assertGreater(len(conv.messages), 50)
         self.assertEqual(set(conv.speakers), {"阿澈", "我"})
 
     def test_warm_sample_parses(self):
-        conv = parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parse_file(SAMPLES / "demo_two_block_warm.txt")
         self.assertGreater(len(conv.messages), 30)
 
     def test_tiny_sample_parses(self):
-        conv = parse_file(SAMPLES / "sample_tiny.txt")
+        conv = parse_file(SAMPLES / "demo_too_short.txt")
         self.assertEqual(len(conv.messages), 5)
 
     def test_describe_runs(self):
-        conv = parse_file(SAMPLES / "sample_wechat_warm.txt")
+        conv = parse_file(SAMPLES / "demo_two_block_warm.txt")
         text = parser.describe(conv)
         self.assertIn("解析消息数", text)
 
