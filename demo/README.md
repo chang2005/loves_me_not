@@ -60,4 +60,4 @@ python -m loves_me_not analyze "samples/demo_two_block_cooling.txt" \
 | `demo_too_short.txt` | 只有 5 条消息，用来验证「样本不足时必须明确提示，不得虚构结论」 |
 
 **这些不是真实记录。** 想分析自己的聊天记录，请按
-[README](../README.md#-使用方法) 里的说明导出后本地运行。
+[README](../README.md#-使用) 里的说明导出后本地运行。

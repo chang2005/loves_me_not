@@ -40,6 +40,6 @@ python -m loves_me_not analyze "samples/demo_two_block_cooling.txt" \
 ## 换成你自己的记录
 
 把导出的文件放到 `data/` 下（该目录已在 `.gitignore` 中，不会被提交），
-然后照 [README](../README.md#-使用方法) 里的说明运行即可。
+然后照 [README](../README.md#-使用) 里的说明运行即可。
 
 > `samples/local/` 也被忽略，方便你放自己的测试样本而不担心误提交。
