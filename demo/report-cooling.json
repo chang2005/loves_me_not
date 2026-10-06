@@ -19,10 +19,10 @@
     "active_days": 27
   },
   "score": {
-    "total": 54,
-    "raw_total": 56.98,
-    "tier": "cooling",
-    "tier_title": "已经在变淡",
+    "total": 58,
+    "raw_total": 62.47,
+    "tier": "lukewarm",
+    "tier_title": "有点平淡了",
     "insufficient_sample": false,
     "confidence": {
       "level": "medium",
@@ -461,7 +461,7 @@
       "score_peer": 1.0,
       "score_me": null,
       "available": true,
-      "summary": "深夜（23:00–3:00）共 8 条，其中 TA 占 75%。TA 最活跃在晚上 18-24，你最活跃在晚上 18-24。",
+      "summary": "深夜（23:00–03:00）共 8 条，其中 TA 占 75%。TA 最活跃在晚上 18-24，你最活跃在晚上 18-24。",
       "subs": [
         {
           "key": "peer_late_rate",
@@ -469,7 +469,7 @@
           "value": 0.1765,
           "score": null,
           "display": "18%",
-          "note": "23:00–3:00"
+          "note": "23:00–03:00"
         },
         {
           "key": "me_late_rate",
@@ -698,10 +698,832 @@
       "reason": "TA 主动开启的一轮对话"
     }
   ],
-  "caveats": [],
+  "caveats": [
+    "量化指标「深夜发消息次数」样本不足，已从综合情感倾向中剔除。"
+  ],
   "comfort": {
-    "title": "你没有做错什么",
-    "body": "数据里有很多你主动的痕迹：你在开口，你在追问，你在收尾之后还想再说一句。而回应在变薄。\n\n我想说的是——这不是因为你不够好，也不是因为你不够努力。感情里的热度是会变的，它不总是谁的错，有时候只是两个人走的节奏不一样了。\n\n你可以再试一次，认真地、不指责地把你的感受说出来。如果他接住了，那是好事；如果没有，那你至少知道了答案，而答案比反复猜测要轻得多。\n\n无论结果如何，你值得一个会主动想起你的人。这一点不因为他的选择而改变。"
+    "title": "平淡不是终点",
+    "body": "分数落在中间，说明这段关系既没有崩坏，也没有在燃烧。很多走得久的关系都会经过这一段——不是不爱了，是日子太长了。\n\n有件事想让你知道：一个人回得慢、说得少，原因可能有很多种，工作、疲惫、性格、甚至只是他本来就不擅长用文字表达。这份报告看不见这些，所以它不该替你做决定。\n\n如果你还想要这段关系，就把它当成一个提醒：该主动聊一次了。"
   },
-  "disclaimer": "本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。"
+  "disclaimer": "本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，重大情感决策请咨询线下专业人士。",
+  "blend": {
+    "base_score": 56.98,
+    "quant_score": 70.7,
+    "weights": {
+      "base": 0.6,
+      "quant": 0.4
+    },
+    "note": "八维模型 57.0 × 60% + 量化指标 70.7 × 40% = 62.5"
+  },
+  "quantifiers": {
+    "raw_total": 70.7,
+    "summary": "TA 的行为信号整体偏积极：最强的一项是「最后发言次数」（20 / 36 段），最弱的一项是「每 5 分钟发消息次数」（平均 1.4 条 / 5 分钟）。",
+    "weights": {
+      "reply_speed": 0.3333,
+      "icebreak": 0.2778,
+      "last_word": 0.2222,
+      "burst": 0.1667
+    },
+    "contributions": {
+      "reply_speed": 22.597,
+      "icebreak": 20.833,
+      "last_word": 21.605,
+      "burst": 5.667
+    },
+    "skipped": [
+      "late_night"
+    ],
+    "metrics": {
+      "reply_speed": {
+        "label": "回复速度",
+        "value": 125.0,
+        "display": "中位 2 分钟",
+        "score": 0.6779,
+        "formula": "TA 每次回复与上一条对方消息的时间差（仅统计 ≤24 小时的间隔），取中位数；映射曲线：中位 5 分钟 ≈ 50 分，越快越高",
+        "source": "每条消息的时间戳与说话人",
+        "note": "基于 26 次回复 · 均值 3.8 小时 · 5 分钟内回复率 54%"
+      },
+      "burst": {
+        "label": "每 5 分钟发消息次数",
+        "value": 1.36,
+        "display": "平均 1.4 条 / 5 分钟",
+        "score": 0.34,
+        "formula": "把 TA 的消息按 5 分钟窗口分桶，统计「有消息的窗口」的平均条数；映射曲线：平均 4 条 / 5 分钟 ≈ 100 分，1 条 ≈ 25 分",
+        "source": "每条消息的时间戳（只算 TA）",
+        "note": "共 25 个活跃窗口 · 峰值 3 条（2023-04-08 12:30）"
+      },
+      "late_night": {
+        "label": "深夜发消息次数",
+        "value": 6.0,
+        "display": "6 条",
+        "score": null,
+        "formula": "TA 在 23:00–03:00 发出的消息条数，并换算成占 TA 总量的比例（比例 20% ≈ 100 分）",
+        "source": "每条消息的时间戳小时数",
+        "note": "占 TA 全部消息的 18% · 消息少于 40 条，不参与打分"
+      },
+      "icebreak": {
+        "label": "打破僵局次数",
+        "value": 6.0,
+        "display": "6 / 16 次",
+        "score": 0.75,
+        "formula": "沉默 ≥24 小时后，下一段对话的第一条消息由谁发出；统计 TA 破冰次数 ÷ 总破冰次数。理想值是双方各半（50% 得满分），全由一方承担则得分下降",
+        "source": "会话分段（30 分钟无消息即断开）+ 每条消息的时间戳与说话人",
+        "note": "共 16 次 ≥24 小时的沉默 · 最长一次 1.3 个月，由我打破"
+      },
+      "last_word": {
+        "label": "最后发言次数",
+        "value": 20.0,
+        "display": "20 / 36 段",
+        "score": 0.9722,
+        "formula": "每段对话最后一条消息的归属；TA 占 50% 最均衡，越偏离 50%（无论谁多）说明收尾越固定在一方",
+        "source": "会话分段（30 分钟无消息即结束）+ 每条消息的说话人",
+        "note": "TA 收尾占比 56%"
+      }
+    }
+  },
+  "footprint": {
+    "first_at": "2023-04-01 21:33:02",
+    "last_at": "2023-10-21 10:00:00",
+    "span_to_now_days": 1283,
+    "span_days": 203,
+    "active_days": 27,
+    "total_messages": 64,
+    "total_sessions": 36,
+    "total_chat_minutes": 35.4,
+    "avg_session_minutes": 1.0,
+    "best_hours": [
+      "21:00",
+      "22:00",
+      "23:00"
+    ],
+    "best_month": "2023-04",
+    "warmest_month": "2023-04",
+    "quietest_month": "2023-07",
+    "best_weekday": 5,
+    "longest_session": {
+      "start": "2023-04-02 08:12:30",
+      "end": "2023-04-02 08:23:10",
+      "minutes": 10.7,
+      "messages": 5
+    },
+    "longest_silence": {
+      "start": "2023-05-02 13:24:00",
+      "end": "2023-06-10 21:00:00",
+      "days": 39.32,
+      "broken_by": "我"
+    },
+    "hours": [
+      {
+        "hour": 0,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 1,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 2,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 3,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 4,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 5,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 6,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 7,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 8,
+        "count": 7,
+        "me": 4,
+        "peer": 3
+      },
+      {
+        "hour": 9,
+        "count": 3,
+        "me": 3,
+        "peer": 0
+      },
+      {
+        "hour": 10,
+        "count": 2,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "hour": 11,
+        "count": 2,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "hour": 12,
+        "count": 6,
+        "me": 2,
+        "peer": 4
+      },
+      {
+        "hour": 13,
+        "count": 4,
+        "me": 2,
+        "peer": 2
+      },
+      {
+        "hour": 14,
+        "count": 1,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "hour": 15,
+        "count": 1,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "hour": 16,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 17,
+        "count": 0,
+        "me": 0,
+        "peer": 0
+      },
+      {
+        "hour": 18,
+        "count": 1,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "hour": 19,
+        "count": 6,
+        "me": 4,
+        "peer": 2
+      },
+      {
+        "hour": 20,
+        "count": 3,
+        "me": 1,
+        "peer": 2
+      },
+      {
+        "hour": 21,
+        "count": 9,
+        "me": 5,
+        "peer": 4
+      },
+      {
+        "hour": 22,
+        "count": 11,
+        "me": 4,
+        "peer": 7
+      },
+      {
+        "hour": 23,
+        "count": 8,
+        "me": 2,
+        "peer": 6
+      }
+    ],
+    "months": [
+      {
+        "label": "2023-04",
+        "count": 27,
+        "me": 11,
+        "peer": 16,
+        "active_days": 6,
+        "peer_share": 0.5926
+      },
+      {
+        "label": "2023-05",
+        "count": 4,
+        "me": 2,
+        "peer": 2,
+        "active_days": 1,
+        "peer_share": 0.5
+      },
+      {
+        "label": "2023-06",
+        "count": 6,
+        "me": 3,
+        "peer": 3,
+        "active_days": 1,
+        "peer_share": 0.5
+      },
+      {
+        "label": "2023-07",
+        "count": 3,
+        "me": 2,
+        "peer": 1,
+        "active_days": 2,
+        "peer_share": 0.3333
+      },
+      {
+        "label": "2023-08",
+        "count": 4,
+        "me": 2,
+        "peer": 2,
+        "active_days": 2,
+        "peer_share": 0.5
+      },
+      {
+        "label": "2023-09",
+        "count": 4,
+        "me": 2,
+        "peer": 2,
+        "active_days": 2,
+        "peer_share": 0.5
+      },
+      {
+        "label": "2023-10",
+        "count": 16,
+        "me": 8,
+        "peer": 8,
+        "active_days": 13,
+        "peer_share": 0.5
+      }
+    ],
+    "weekdays": [
+      11,
+      7,
+      13,
+      1,
+      2,
+      18,
+      12
+    ],
+    "days": [
+      {
+        "date": "2023-04-01",
+        "count": 3,
+        "chat_minutes": 2.6,
+        "span_minutes": 2.6,
+        "me": 1,
+        "peer": 2
+      },
+      {
+        "date": "2023-04-02",
+        "count": 5,
+        "chat_minutes": 10.7,
+        "span_minutes": 10.7,
+        "me": 2,
+        "peer": 3
+      },
+      {
+        "date": "2023-04-03",
+        "count": 5,
+        "chat_minutes": 4.1,
+        "span_minutes": 4.1,
+        "me": 2,
+        "peer": 3
+      },
+      {
+        "date": "2023-04-05",
+        "count": 4,
+        "chat_minutes": 2.7,
+        "span_minutes": 2.7,
+        "me": 2,
+        "peer": 2
+      },
+      {
+        "date": "2023-04-08",
+        "count": 5,
+        "chat_minutes": 4.8,
+        "span_minutes": 4.8,
+        "me": 2,
+        "peer": 3
+      },
+      {
+        "date": "2023-04-12",
+        "count": 5,
+        "chat_minutes": 2.5,
+        "span_minutes": 2.5,
+        "me": 2,
+        "peer": 3
+      },
+      {
+        "date": "2023-05-02",
+        "count": 4,
+        "chat_minutes": 4.0,
+        "span_minutes": 4.0,
+        "me": 2,
+        "peer": 2
+      },
+      {
+        "date": "2023-06-10",
+        "count": 6,
+        "chat_minutes": 3.0,
+        "span_minutes": 92.0,
+        "me": 3,
+        "peer": 3
+      },
+      {
+        "date": "2023-07-15",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 150.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-07-16",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-08-20",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 220.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-08-21",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 620.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-09-05",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-09-06",
+        "count": 3,
+        "chat_minutes": 1.0,
+        "span_minutes": 210.0,
+        "me": 1,
+        "peer": 2
+      },
+      {
+        "date": "2023-10-01",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-10-02",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-03",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 720.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-04",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-10-05",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-06",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-10-07",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-08",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-10-09",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 0,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-15",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 270.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-16",
+        "count": 2,
+        "chat_minutes": 0.0,
+        "span_minutes": 720.0,
+        "me": 1,
+        "peer": 1
+      },
+      {
+        "date": "2023-10-20",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 1,
+        "peer": 0
+      },
+      {
+        "date": "2023-10-21",
+        "count": 1,
+        "chat_minutes": 0.0,
+        "span_minutes": 0.0,
+        "me": 0,
+        "peer": 1
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "kind": "busiest_month",
+      "title": "聊得最多的月份",
+      "when": "2023-04-01 00:00:00",
+      "detail": "2023 年 4 月：27 条消息，6 天有对话"
+    },
+    {
+      "kind": "first",
+      "title": "第一次说话",
+      "when": "2023-04-01 21:33:02",
+      "detail": "阿澈：「到家了跟我说一声」"
+    },
+    {
+      "kind": "warmest_day",
+      "title": "最暖的一天",
+      "when": "2023-04-02 00:00:00",
+      "detail": "情绪均分 +0.49（越高越暖）"
+    },
+    {
+      "kind": "longest_session",
+      "title": "最长的一次聊天",
+      "when": "2023-04-02 08:12:30",
+      "detail": "从 08:12 聊到 08:23，共 11 分钟、5 条消息"
+    },
+    {
+      "kind": "longest_day",
+      "title": "聊得最久的一天",
+      "when": "2023-04-02 08:12:30",
+      "detail": "各段对话加起来 11 分钟、5 条消息"
+    },
+    {
+      "kind": "coldest_day",
+      "title": "最冷的一天",
+      "when": "2023-04-08 00:00:00",
+      "detail": "情绪均分 -0.12"
+    },
+    {
+      "kind": "longest_silence",
+      "title": "最长的一次沉默",
+      "when": "2023-05-02 13:24:00",
+      "detail": "从 2023-05-02 到 2023-06-10，整整 1.3 个月 没有说话；最后由我打破"
+    },
+    {
+      "kind": "busiest_day",
+      "title": "最热闹的一天",
+      "when": "2023-06-10 21:00:00",
+      "detail": "6 条消息，聊了 92 分钟"
+    },
+    {
+      "kind": "quietest_month",
+      "title": "最安静的月份",
+      "when": "2023-07-01 00:00:00",
+      "detail": "2023 年 7 月：只有 3 条消息"
+    },
+    {
+      "kind": "turning",
+      "title": "热度转折点",
+      "when": "2023-08-01 00:00:00",
+      "detail": "以 2023 年 8 月 为界，前后两个月的聊天量变多了 122%"
+    },
+    {
+      "kind": "last",
+      "title": "最后一次说话",
+      "when": "2023-10-21 10:00:00",
+      "detail": "阿澈：「嗯」"
+    }
+  ],
+  "topics": [
+    {
+      "word": "想你",
+      "count": 4,
+      "weight": 1.0,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "晚安",
+      "count": 4,
+      "weight": 1.0,
+      "dominant": null
+    },
+    {
+      "word": "吵架",
+      "count": 4,
+      "weight": 1.0,
+      "dominant": null
+    },
+    {
+      "word": "到家",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "早安",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "下班",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "开会",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "夜宵",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "熬夜",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "陪你",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "海边",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "加班",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "吃饭",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "周末",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "生日",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "礼物",
+      "count": 2,
+      "weight": 0.5,
+      "dominant": "我"
+    },
+    {
+      "word": "最近",
+      "count": 3,
+      "weight": 0.3409,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "想太多了",
+      "count": 2,
+      "weight": 0.3333,
+      "dominant": null
+    },
+    {
+      "word": "呆呆的",
+      "count": 2,
+      "weight": 0.3182,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "那我们",
+      "count": 2,
+      "weight": 0.3182,
+      "dominant": null
+    },
+    {
+      "word": "想吵架",
+      "count": 2,
+      "weight": 0.3182,
+      "dominant": null
+    },
+    {
+      "word": "早点",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": null
+    },
+    {
+      "word": "安宝",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "辛苦",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": null
+    },
+    {
+      "word": "去吃",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": "阿澈"
+    },
+    {
+      "word": "记得",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": null
+    },
+    {
+      "word": "去哪",
+      "count": 2,
+      "weight": 0.2273,
+      "dominant": null
+    }
+  ],
+  "persona": [
+    {
+      "key": "evening",
+      "label": "夜晚型",
+      "strength": 1.0,
+      "evidence": "TA 有 65% 的消息在 18:00 之后，白天基本不出现",
+      "support": "22 / 34 条在晚间",
+      "tone": "neutral"
+    },
+    {
+      "key": "bursty",
+      "label": "忽冷忽热型",
+      "strength": 0.889,
+      "evidence": "聊天量月度波动很大：最多的一个月 27 条，最少的只有 3 条",
+      "support": "波动幅度 89%",
+      "tone": "cool"
+    },
+    {
+      "key": "initiator",
+      "label": "主动型",
+      "strength": 0.794,
+      "evidence": "36 段对话里有 20 段是 TA 先开口（56%）",
+      "support": "20 / 36 段",
+      "tone": "warm"
+    },
+    {
+      "key": "fast_replier",
+      "label": "秒回型",
+      "strength": 0.75,
+      "evidence": "中位回复只要 2 分钟，54% 的回复在 5 分钟内",
+      "support": "26 次回复，中位 2 分钟",
+      "tone": "warm"
+    },
+    {
+      "key": "waiter",
+      "label": "等你先开口型",
+      "strength": 0.65,
+      "evidence": "16 次超过一天的沉默里，TA 主动打破了 6 次（38%）",
+      "support": "6 / 16 次",
+      "tone": "cool"
+    },
+    {
+      "key": "plain",
+      "label": "纯文字型",
+      "strength": 0.5,
+      "evidence": "TA 从不发表情，全程纯文字",
+      "support": "0 / 34 条带表情",
+      "tone": "neutral"
+    }
+  ]
 }

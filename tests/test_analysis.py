@@ -332,19 +332,39 @@ class TestRedaction(unittest.TestCase):
             self.assertEqual(report.redact(text), text)
 
     def test_redaction_applied_to_report_evidence(self):
-        """端到端：带 PII 的记录经 --redact 后，报告里不能残留敏感串。"""
+        """端到端：带 PII 的记录经 --redact 后，报告里不能残留敏感串。
+
+        注意：敏感文本不一定被选进「原话证据」（取决于打分），
+        所以这里断言的是**报告全文**不残留，而不是「未脱敏时一定出现」。
+        """
         conv = parser.parse_string(
-            "2023-01-01 09:00:00 我\n我的手机号13812345678 记一下\n\n"
-            "2023-01-01 09:01:00 阿澈\n好 我的邮箱 a@b.com\n"
+            "2023-01-01 09:00:00 我\n我的手机号13812345678 你记一下好不好\n\n"
+            "2023-01-01 09:01:00 阿澈\n好 我的邮箱 a@b.com 我记下了\n\n"
+            "2023-01-01 09:02:00 我\n还有我的身份证110101199001011234\n\n"
+            "2023-01-01 09:03:00 阿澈\n收到\n"
         )
         analysis = metrics.analyze(conv, "我", "阿澈")
         result = scoring.score(analysis)
-        html_plain = report.build_html(analysis, result, conv.report)
-        self.assertIn("13812345678", html_plain)  # 未脱敏时应该在（证明测试有效）
         report._apply_redaction(analysis, result)
-        html_red = report.build_html(analysis, result, conv.report)
-        self.assertNotIn("13812345678", html_red)
-        self.assertNotIn("a@b.com", html_red)
+        html = report.build_html(analysis, result, conv.report)
+        for leak in ("13812345678", "a@b.com", "110101199001011234"):
+            self.assertNotIn(leak, html, f"报告里残留了敏感串：{leak}")
+
+    def test_redaction_touches_all_evidence_lists(self):
+        """不只 result.evidence，各维度与关键节点里的原话也要一起脱敏。"""
+        conv = parser.parse_string(
+            "2023-01-01 09:00:00 我\n我的手机号13812345678\n\n"
+            "2023-01-01 09:01:00 阿澈\n好的\n"
+        )
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        report._apply_redaction(analysis, result)
+        for dim in analysis.dimensions.values():
+            for ev in dim.evidence:
+                self.assertNotIn("13812345678", ev.text)
+        # 关键节点会引用「第一次/最后一次说话」的原话，这也是泄漏点
+        for node in analysis.timeline_nodes:
+            self.assertNotIn("13812345678", node.detail)
 
 
 class TestReport(unittest.TestCase):
@@ -354,6 +374,10 @@ class TestReport(unittest.TestCase):
         cls.analysis = metrics.analyze(cls.conv, "我", "阿澈")
         cls.result = scoring.score(cls.analysis)
         cls.html = report.build_html(cls.analysis, cls.result, cls.conv.report)
+
+    def test_no_raw_markdown_in_html(self):
+        """报告是 HTML，不能漏出 ``**粗体**`` 这类 markdown 记号。"""
+        self.assertNotIn("**", self.html)
 
     def test_no_external_requests(self):
         """单文件必须自包含：不能有任何 http(s) 引用、外链、CDN。"""

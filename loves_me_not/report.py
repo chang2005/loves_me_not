@@ -20,8 +20,10 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 from .metrics import Analysis, Dimension, Evidence, PeriodStat
+from . import scoring
 from .scoring import ScoreResult
 from . import __version__
+from . import visuals as V
 
 # --------------------------------------------------------------------------- #
 # 基础工具
@@ -75,7 +77,16 @@ def redact(text: str) -> str:
 
 
 def _apply_redaction(analysis: Analysis, result: ScoreResult) -> None:
-    """就地脱敏：报告里所有会展示原始文本的地方都过一遍。"""
+    """就地脱敏：报告里**所有**会展示原始文本的地方都要过一遍。
+
+    这是一份清单而不是「顺手改几个地方」——漏掉任何一处，
+    ``--redact`` 就会给出虚假的安全感。目前覆盖：
+
+    * ``result.evidence``（支撑结论的原话）
+    * 每个维度的 ``evidence``（维度自己的举证）
+    * ``analysis.highlights``（最暖/最冷片段）
+    * ``analysis.timeline_nodes[].detail``（关键节点里的原话）
+    """
     for dim in analysis.dimensions.values():
         for ev in dim.evidence:
             ev.text = redact(ev.text)
@@ -84,6 +95,10 @@ def _apply_redaction(analysis: Analysis, result: ScoreResult) -> None:
     for group in analysis.highlights.values():
         for ev in group:
             ev.text = redact(ev.text)
+    for node in getattr(analysis, "timeline_nodes", []) or []:
+        detail = getattr(node, "detail", None)
+        if isinstance(detail, str):
+            node.detail = redact(detail)
 
 
 # --------------------------------------------------------------------------- #
@@ -668,6 +683,228 @@ def render_comfort(result: ScoreResult) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# 新增区块：量化指标 / 足迹 / 热力图 / 词云 / 画像 / 时间线
+# --------------------------------------------------------------------------- #
+
+def render_quantifiers(analysis: Analysis) -> str:
+    """五个量化指标 + 综合情感倾向，每项都写明计算口径与数据来源。"""
+    quant = analysis.quant
+    if quant is None or not getattr(quant, "metrics", None):
+        return '<p class="faint">没有可用的量化指标。</p>'
+
+    total = quant.raw_total
+    if total is None:
+        headline = (
+            '<div class="quant-head quant-na">'
+            "<strong>综合情感倾向：无法计算</strong>"
+            "<span>五个量化指标都因为样本不足被剔除。"
+            "这不是「TA 不爱你」，而是这份记录还不够回答这个问题。</span>"
+            "</div>"
+        )
+    else:
+        color = scoring.tier_for(int(round(total))).color
+        headline = (
+            f'<div class="quant-head" style="border-color:{color}55">'
+            f'<strong style="color:{color}">综合情感倾向：{total:.0f} / 100</strong>'
+            f"<span>{esc(quant.summary)}</span>"
+            "</div>"
+        )
+
+    rows = []
+    for key, m in quant.metrics.items():
+        weight = quant.weights.get(key)
+        chip = ""
+        if weight is not None:
+            chip = (f'<span class="q-weight">权重 {weight * 100:.0f}% · '
+                    f'贡献 {quant.contributions.get(key, 0):.1f}</span>')
+        elif key in quant.skipped:
+            chip = '<span class="q-weight q-skip">样本不足 · 未参与打分</span>'
+        bar = ""
+        if m.score is not None:
+            hue = V.PALETTE["peer"]
+            bar = (f'<div class="q-bar"><div style="width:{max(2.0, m.score * 100):.0f}%;'
+                   f'background:{hue}"></div></div>')
+        rows.append(f"""
+    <div class="q-item">
+      <div class="q-line">
+        <span class="q-label">{esc(m.label)}</span>
+        <span class="q-value{' faint' if m.score is None else ''}">{esc(m.display)}</span>
+        {chip}
+      </div>
+      {bar}
+      <p class="tiny faint q-formula">
+        <b>口径</b>：{esc(m.formula)}<br>
+        <b>来源</b>：{esc(m.source)}
+        {f'<br><b>补充</b>：{esc(m.note)}' if m.note else ''}
+      </p>
+    </div>""")
+
+    return f"""
+<div class="quant-wrap">
+  {headline}
+  <div class="quant-list">{''.join(rows)}</div>
+  <div class="quant-legend tiny faint">
+    这五个指标只看 <b>{esc(analysis.peer)}</b> 的行为信号。「打破僵局」与「最后发言」
+    没有绝对好坏——双方各半最健康，全由一方承担会降低得分。
+    样本不足的指标会被剔除，权重重新归一化，<b>不会被当成 0 分</b>。
+  </div>
+</div>"""
+
+
+def render_footprint(analysis: Analysis) -> str:
+    """聊天足迹：跨度、聊得最好的时段、最好/最差的月份、最长一次、最长沉默。"""
+    fp = analysis.footprint
+    if fp is None or fp.first_at is None:
+        return '<p class="faint">这份记录里没有可用的时间信息，无法生成聊天足迹。</p>'
+
+    me, peer = analysis.me, analysis.peer
+
+    def stat(title: str, value: str, sub: str = "") -> str:
+        sub_html = f'<span class="stat-sub">{esc(sub)}</span>' if sub else ""
+        return (f'<div class="stat"><span class="stat-title">{esc(title)}</span>'
+                f'<span class="stat-value">{esc(value)}</span>{sub_html}</div>')
+
+    stats = [
+        stat("聊天跨度（首条消息起）", f"{fp.span_to_now_days} 天",
+             f"从 {fp.first_at:%Y-%m-%d} 到今天"),
+        stat("首尾消息间隔", f"{fp.span_days} 天",
+             f"{fp.first_at:%Y-%m-%d} → {fp.last_at:%Y-%m-%d}" if fp.last_at else ""),
+        stat("有对话的天数", f"{fp.active_days} 天",
+             f"平均每天 {fp.avg_messages_per_active_day:.1f} 条消息"),
+        stat("对话段数", f"{fp.total_sessions} 段",
+             f"平均每段 {fp.avg_session_minutes:.0f} 分钟"),
+        stat("累计聊天时长", f"{fp.total_chat_minutes / 60:.1f} 小时",
+             "各段对话时长之和"),
+    ]
+
+    if fp.longest_session:
+        s = fp.longest_session
+        stats.append(stat("最长的一次聊天", _fmt_minutes(s.duration_minutes),
+                          f"{s.start:%Y-%m-%d %H:%M} 起 · {s.count} 条消息"))
+    if fp.longest_silence:
+        g = fp.longest_silence
+        stats.append(stat("最长的一次沉默", _fmt_minutes(g.length.total_seconds() / 60),
+                          f"{g.start:%Y-%m-%d} → {g.end:%Y-%m-%d} · "
+                          f"由{esc(g.broken_by or '未知')}打破"))
+
+    best_hours = fp.best_hours
+    best_hour_txt = (f"{best_hours[0].label}–{best_hours[-1].hour + 1:02d}:00"
+                     if best_hours else "—")
+    if best_hours:
+        stats.append(stat("聊得最好的时段", best_hour_txt,
+                          f"这三小时共 {sum(h.count for h in best_hours)} 条消息"))
+
+    if fp.best_month:
+        stats.append(stat("聊得最多的月份", fp.best_month.pretty,
+                          f"{fp.best_month.count} 条 · {fp.best_month.active_days} 天有对话"))
+    if fp.warmest_month:
+        wm = fp.warmest_month
+        stats.append(stat("互动最均衡的月份", wm.pretty,
+                          f"TA 占 {wm.peer_share * 100:.0f}% · 消息量 {wm.count} 条"))
+    if fp.quietest_month:
+        stats.append(stat("最安静的月份", fp.quietest_month.pretty,
+                          f"只有 {fp.quietest_month.count} 条消息"))
+    if fp.best_weekday is not None:
+        from .timeline import WEEKDAY_NAMES
+        stats.append(stat("聊得最多的星期", WEEKDAY_NAMES[fp.best_weekday],
+                          f"{fp.weekdays[fp.best_weekday]} 条消息"))
+
+    hour_chart = V.render_hour_bars(fp.hours, me, peer)
+    month_chart = V.render_month_bars(fp.months, me, peer)
+
+    disclaimer = (
+        '<p class="tiny faint">「互动最均衡的月份」是<b>代理指标</b>：'
+        "取消息量不低于最高月 25% 的月份里、TA 发言占比最高者。"
+        "它衡量的是「双方都在说话的均衡度」，<b>不是感情好坏的真相</b>——"
+        "聊得多、聊得均衡，也可能只是那段日子比较闲。</p>"
+    )
+
+    return f"""
+<div class="stats stats-wide">{''.join(stats)}</div>
+
+<div class="chart-grid" style="margin-top:12px">
+  <div class="chart-card">
+    <h4>一天里什么时候在聊</h4>
+    <p class="tiny faint">按小时统计消息条数，堆叠展示双方贡献</p>
+    {hour_chart}
+  </div>
+  <div class="chart-card">
+    <h4>哪个月聊得最多</h4>
+    <p class="tiny faint">按月统计消息条数，已标出最多与最少的月份</p>
+    {month_chart}
+  </div>
+</div>
+{disclaimer}"""
+
+
+def _fmt_minutes(minutes: float) -> str:
+    if minutes < 1:
+        return f"{minutes * 60:.0f} 秒"
+    if minutes < 60:
+        return f"{minutes:.0f} 分钟"
+    if minutes < 1440:
+        return f"{minutes / 60:.1f} 小时"
+    return f"{minutes / 1440:.1f} 天"
+
+
+def render_heatmap_section(analysis: Analysis) -> str:
+    fp = analysis.footprint
+    if fp is None:
+        return '<p class="faint">没有可用于绘制热力图的数据。</p>'
+    return V.render_heatmap(fp)
+
+
+def render_topics(analysis: Analysis) -> str:
+    return V.render_wordcloud(analysis.topics, analysis.me, analysis.peer,
+                              analysis.total_real)
+
+
+def render_persona_section(analysis: Analysis) -> str:
+    return V.render_persona(analysis.persona, analysis.peer)
+
+
+_TAG_COLOR = {
+    "first": V.PALETTE["good"],
+    "last": V.PALETTE["ink_soft"],
+    "longest_session": V.PALETTE["accent"],
+    "longest_silence": V.PALETTE["me"],
+    "busiest_day": V.PALETTE["peer"],
+    "longest_day": V.PALETTE["accent"],
+    "busiest_month": V.PALETTE["peer"],
+    "quietest_month": V.PALETTE["ink_faint"],
+    "warmest_day": V.PALETTE["good"],
+    "coldest_day": V.PALETTE["me"],
+    "turning": V.PALETTE["warn"],
+}
+
+
+def render_timeline(analysis: Analysis) -> str:
+    """关键节点时间线。"""
+    nodes = analysis.timeline_nodes
+    if not nodes:
+        return '<p class="faint">这份记录里没有挑出足够的关键节点。</p>'
+
+    items = []
+    for n in nodes:
+        color = _TAG_COLOR.get(n.kind, V.PALETTE["ink_soft"])
+        when = f"{n.when:%Y-%m-%d}" if n.when else "—"
+        if n.when and n.kind in ("longest_session",):
+            when = f"{n.when:%Y-%m-%d %H:%M}"
+        items.append(f"""
+    <li class="tl-node">
+      <span class="tl-dot" style="background:{color}"></span>
+      <div class="tl-body">
+        <div class="tl-head">
+          <span class="tl-title" style="color:{color}">{esc(n.title)}</span>
+          <span class="tl-when">{esc(when)}</span>
+        </div>
+        <p class="tl-detail">{esc(n.detail)}</p>
+      </div>
+    </li>""")
+    return f'<ol class="timeline">{"".join(items)}</ol>'
+
+
+# --------------------------------------------------------------------------- #
 # 样式
 # --------------------------------------------------------------------------- #
 
@@ -840,11 +1077,92 @@ footer p {{ margin: 0 0 .5em; }}
   .chart-grid {{ grid-template-columns: 1fr 1fr; }}
   .wins {{ grid-template-columns: 1fr 1fr; }}
   .bds {{ grid-template-columns: 1fr; }}
+  .stats-wide {{ grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }}
+  .persona-grid {{ grid-template-columns: 1fr 1fr; }}
 }}
 @media print {{
   body {{ background: #fff; }}
   .card, .dim-card, .chart-card, .ev, .stat {{ break-inside: avoid; }}
 }}
+
+/* ---------- 量化指标 ---------- */
+.quant-head {{
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--card); border: 1px solid var(--line); border-left-width: 4px;
+  border-radius: 14px; padding: 12px 14px; margin-bottom: 14px;
+}}
+.quant-head strong {{ font-size: 1.05rem; }}
+.quant-head span {{ font-size: .84rem; color: var(--ink-soft); }}
+.quant-na {{ background: #fdf6e9; border-color: #f0dcb8; }}
+.quant-list {{ display: grid; gap: 10px; }}
+.q-item {{
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 12px 13px;
+}}
+.q-line {{ display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 6px; }}
+.q-label {{ font-weight: 620; font-size: .92rem; }}
+.q-value {{ font-variant-numeric: tabular-nums; font-weight: 600; color: var(--peer); }}
+.q-weight {{ font-size: .7rem; color: var(--ink-faint); margin-left: auto; }}
+.q-skip {{ color: var(--warn); }}
+.q-bar {{ height: 7px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 7px; }}
+.q-bar > div {{ height: 100%; border-radius: 99px; }}
+.q-formula {{ line-height: 1.6; margin: 0; }}
+.quant-legend {{
+  margin-top: 12px; padding: 10px 12px; background: #f7f4f6; border-radius: 10px;
+  line-height: 1.6;
+}}
+
+/* ---------- 热力图 ---------- */
+.heat-wrap {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
+.heat-scroll {{ overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }}
+svg.heatmap {{ display: block; }}
+svg.heatmap rect {{ transition: opacity .15s; }}
+svg.heatmap rect:hover {{ opacity: .72; }}
+.heat-legend {{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }}
+svg.heat-scale {{ display: block; }}
+.heat-facts {{ display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; color: var(--ink-soft); }}
+.heat-note {{ margin: 8px 0 0; line-height: 1.6; }}
+
+/* ---------- 词云 ---------- */
+.cloud-wrap {{ background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }}
+svg.wordcloud {{ width: 100%; height: auto; display: block; }}
+svg.wordcloud text {{ font-family: inherit; }}
+
+/* ---------- 人物画像 ---------- */
+.persona-wrap {{ display: block; }}
+.persona-note {{
+  background: #f7f4f6; border-radius: 10px; padding: 10px 12px;
+  line-height: 1.6; margin-bottom: 12px;
+}}
+.persona-grid {{ display: grid; grid-template-columns: 1fr; gap: 10px; }}
+.persona-card {{
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px;
+}}
+.persona-head {{ display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }}
+.persona-label {{ font-weight: 660; font-size: 1rem; }}
+.persona-tone {{ border-radius: 99px; padding: 2px 9px; white-space: nowrap; }}
+.persona-text {{ font-size: .87rem; color: var(--ink-soft); margin: 0 0 8px; }}
+.persona-bar {{ height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 5px; }}
+.persona-bar > div {{ height: 100%; border-radius: 99px; }}
+.persona-support {{ display: block; }}
+
+/* ---------- 时间线 ---------- */
+.timeline {{ list-style: none; margin: 0; padding: 0 0 0 6px; position: relative; }}
+.timeline::before {{
+  content: ""; position: absolute; left: 11px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--line); border-radius: 2px;
+}}
+.tl-node {{ position: relative; padding: 0 0 14px 30px; }}
+.tl-dot {{
+  position: absolute; left: 5px; top: 5px; width: 13px; height: 13px;
+  border-radius: 50%; border: 2.5px solid var(--bg); box-sizing: border-box;
+}}
+.tl-body {{ background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }}
+.tl-head {{ display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }}
+.tl-title {{ font-weight: 640; font-size: .9rem; }}
+.tl-when {{ font-size: .74rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }}
+.tl-detail {{ margin: 4px 0 0; font-size: .85rem; color: var(--ink-soft); }}
+svg.hourbars, svg.monthbars {{ width: 100%; height: auto; display: block; }}
 """
 
 
@@ -885,6 +1203,16 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
   {render_verdict(result, analysis, assumed=assumed)}
 
   <section>
+    <h2>五个量化指标</h2>
+    <p class="tiny faint">
+      这一组指标只看 <b>{esc(analysis.peer)}</b> 的行为信号：回得多快、
+      一次能连发几条、深夜还在不在、冷战之后谁先开口、一段对话最后由谁收尾。
+      每一项都写明了计算口径与数据来源，你可以自己复核。
+    </p>
+    {render_quantifiers(analysis)}
+  </section>
+
+  <section>
     <h2>双方投入度</h2>
     <div class="card">
       {render_dual_bars(result, analysis)}
@@ -894,6 +1222,44 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
   <section>
     <h2>关键数据</h2>
     {render_cards(analysis)}
+  </section>
+
+  <section>
+    <h2>聊天足迹</h2>
+    <p class="tiny faint">
+      从第一条消息一直算到今天。所有数字都来自消息时间戳，没有估算。
+    </p>
+    {render_footprint(analysis)}
+  </section>
+
+  <section>
+    <h2>聊天日历热力图</h2>
+    <p class="tiny faint">
+      仿 GitHub 贡献图：每个格子是一天，<b>颜色越深代表当天聊得越久</b>
+      （当天各段对话的时长之和，一段对话 = 相邻消息间隔不超过 30 分钟）。
+    </p>
+    {render_heatmap_section(analysis)}
+  </section>
+
+  <section>
+    <h2>你们都在聊什么</h2>
+    <p class="tiny faint">
+      取聊天记录里出现最多的话题关键词。颜色表示这个话题主要由谁说起。
+    </p>
+    {render_topics(analysis)}
+  </section>
+
+  <section>
+    <h2>{esc(analysis.peer)} 是一个怎样的人</h2>
+    {render_persona_section(analysis)}
+  </section>
+
+  <section>
+    <h2>关键节点</h2>
+    <p class="tiny faint">
+      这段关系里值得被记下来的时刻，按时间排列。
+    </p>
+    {render_timeline(analysis)}
   </section>
 
   <section>
@@ -931,9 +1297,14 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
     <details class="conf" open>
       <summary>展开 / 收起明细</summary>
       <p class="tiny faint">
+        <b>总分由两个视角综合而成</b>：八维模型（覆盖面广）与五个量化指标
+        （聚焦 TA 的行为信号）。两者先各自算成 0–100，再按权重综合：
+        {esc(result.blend_note)}
+      </p>
+      <p class="tiny faint">
         每个维度先算出若干子指标，各自映射到 0–100 后加权得到维度分，维度分再加权得到总分。
         无法计算的维度会被剔除，权重重新归一化——<b>不会当成 0 分</b>。
-        下面是 {esc(analysis.peer)} 视角（也就是顶部总分）的完整分账。
+        下面是 {esc(analysis.peer)} 视角的完整分账。
       </p>
       {render_breakdown(result, analysis)}
     </details>
@@ -1074,5 +1445,118 @@ def build_json(analysis: Analysis, result: ScoreResult) -> str:
         "caveats": analysis.caveats,
         "comfort": {"title": result.comfort_title, "body": result.comfort_body},
         "disclaimer": result.disclaimer,
+        **_json_extras(analysis, result),
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _json_extras(analysis: Analysis, result: ScoreResult) -> dict:
+    """量化指标 / 足迹 / 时间线 / 话题 / 画像的 JSON 表示。"""
+    out: dict = {
+        "blend": {
+            "base_score": None if result.base_score is None else round(result.base_score, 2),
+            "quant_score": None if result.quant_score is None else round(result.quant_score, 2),
+            "weights": result.blend,
+            "note": result.blend_note,
+        }
+    }
+
+    quant = analysis.quant
+    if quant is not None:
+        out["quantifiers"] = {
+            "raw_total": None if quant.raw_total is None else round(quant.raw_total, 2),
+            "summary": quant.summary,
+            "weights": {k: round(v, 4) for k, v in quant.weights.items()},
+            "contributions": {k: round(v, 3) for k, v in quant.contributions.items()},
+            "skipped": quant.skipped,
+            "metrics": {
+                k: {
+                    "label": m.label,
+                    "value": None if m.value is None else round(m.value, 3),
+                    "display": m.display,
+                    "score": None if m.score is None else round(m.score, 4),
+                    "formula": m.formula,
+                    "source": m.source,
+                    "note": m.note,
+                }
+                for k, m in quant.metrics.items()
+            },
+        }
+
+    fp = analysis.footprint
+    if fp is not None and fp.first_at is not None:
+        out["footprint"] = {
+            "first_at": fp.first_at.isoformat(sep=" "),
+            "last_at": fp.last_at.isoformat(sep=" ") if fp.last_at else None,
+            "span_to_now_days": fp.span_to_now_days,
+            "span_days": fp.span_days,
+            "active_days": fp.active_days,
+            "total_messages": fp.total_messages,
+            "total_sessions": fp.total_sessions,
+            "total_chat_minutes": round(fp.total_chat_minutes, 1),
+            "avg_session_minutes": round(fp.avg_session_minutes, 1),
+            "best_hours": [h.label for h in fp.best_hours],
+            "best_month": fp.best_month.label if fp.best_month else None,
+            "warmest_month": fp.warmest_month.label if fp.warmest_month else None,
+            "quietest_month": fp.quietest_month.label if fp.quietest_month else None,
+            "best_weekday": fp.best_weekday,
+            "longest_session": (
+                {
+                    "start": fp.longest_session.start.isoformat(sep=" "),
+                    "end": fp.longest_session.end.isoformat(sep=" "),
+                    "minutes": round(fp.longest_session.duration_minutes, 1),
+                    "messages": fp.longest_session.count,
+                }
+                if fp.longest_session else None
+            ),
+            "longest_silence": (
+                {
+                    "start": fp.longest_silence.start.isoformat(sep=" "),
+                    "end": fp.longest_silence.end.isoformat(sep=" "),
+                    "days": round(fp.longest_silence.days, 2),
+                    "broken_by": fp.longest_silence.broken_by,
+                }
+                if fp.longest_silence else None
+            ),
+            "hours": [
+                {"hour": h.hour, "count": h.count,
+                 "me": h.me_count, "peer": h.peer_count}
+                for h in fp.hours
+            ],
+            "months": [
+                {"label": m.label, "count": m.count, "me": m.me_count,
+                 "peer": m.peer_count, "active_days": m.active_days,
+                 "peer_share": round(m.peer_share, 4)}
+                for m in fp.months
+            ],
+            "weekdays": fp.weekdays,
+            "days": [
+                {"date": d.date_key, "count": d.count,
+                 "chat_minutes": round(d.chat_minutes, 1),
+                 "span_minutes": round(d.span_minutes, 1),
+                 "me": d.me_count, "peer": d.peer_count}
+                for d in sorted(fp.days.values(), key=lambda x: x.date_key)
+            ],
+        }
+
+    out["timeline"] = [
+        {
+            "kind": n.kind,
+            "title": n.title,
+            "when": n.when.isoformat(sep=" ") if n.when else None,
+            "detail": n.detail,
+        }
+        for n in analysis.timeline_nodes
+    ]
+    out["topics"] = [
+        {"word": t.word, "count": t.count, "weight": t.weight, "dominant": t.dominant}
+        for t in analysis.topics
+    ]
+    out["persona"] = [
+        {
+            "key": p.key, "label": p.label, "strength": round(p.strength, 3),
+            "evidence": p.evidence_text, "support": p.support, "tone": p.tone,
+        }
+        for p in analysis.persona
+    ]
+    return out

@@ -145,7 +145,7 @@ class Confidence:
 
 @dataclass
 class ScoreResult:
-    #: 0–100 的整数总分（主要看 TA 的投入度）
+    #: 0–100 的整数总分（八维模型与量化指标的加权综合）
     total: int
     #: 收缩前的原始分，用于透明展示
     raw_total: float
@@ -169,6 +169,15 @@ class ScoreResult:
         "本报告基于统计学规律生成，仅供娱乐与自我反思，不代表任何一方的真实情感，"
         "重大情感决策请咨询线下专业人士。"
     )
+    # ---- 与量化指标综合后的结果 ----
+    #: 八维模型的原始分（0–100），未与量化指标混合
+    base_score: float | None = None
+    #: 量化指标的综合情感倾向（0–100）
+    quant_score: float | None = None
+    #: 综合后实际采用的两个权重（和为 1）
+    blend: dict[str, float] = field(default_factory=dict)
+    #: 综合说明
+    blend_note: str = ""
 
 
 # --------------------------------------------------------------------------- #
@@ -386,32 +395,72 @@ def _evidence_cap(analysis: Analysis) -> int:
     return MAX_EVIDENCE
 
 
+#: 八维模型与量化指标在总分里的权重。
+#: 八维模型覆盖面更广（主动性、字数、提问、称呼、情绪走向），
+#: 量化指标更聚焦「TA 的行为信号」（回复速度、破冰、收尾、爆发度、深夜），
+#: 所以给八维模型略高的权重。
+BLEND_BASE = 0.6
+BLEND_QUANT = 0.4
+
+
 def score(analysis: Analysis) -> ScoreResult:
-    """把 :class:`~loves_me_not.metrics.Analysis` 换算成最终结论。"""
+    """把 :class:`~loves_me_not.metrics.Analysis` 换算成最终结论。
+
+    总分是两个视角的综合：
+
+    1. **八维模型**（:data:`WEIGHTS_PEER`）——覆盖面广；
+    2. **五大量化指标**（:mod:`loves_me_not.insights`）——聚焦 TA 的行为信号。
+
+    两者各有权重，先分别得出 0–100，再按 :data:`BLEND_BASE` / :data:`BLEND_QUANT`
+    加权。**任何一方缺失就用另一方**，绝不把缺失方当 0 分。
+    综合之后再按样本量做收缩。
+    """
     peer_part = _score_part("peer", analysis, WEIGHTS_PEER)
     me_part = _score_part("me", analysis, WEIGHTS_ME)
     pair_part = _score_part("pair", analysis, WEIGHTS_PAIR)
 
     confidence = _confidence(analysis)
 
+    # ---- 两个视角的分 ----
+    base_score = peer_part.score              # 0–100 或 None
+    quant = getattr(analysis, "quant", None)
+    quant_score = getattr(quant, "raw_total", None)
+
+    blend: dict[str, float] = {}
+    if base_score is not None and quant_score is not None:
+        blend = {"base": BLEND_BASE, "quant": BLEND_QUANT}
+        raw = base_score * BLEND_BASE + quant_score * BLEND_QUANT
+        blend_note = (f"八维模型 {base_score:.1f} × {BLEND_BASE:.0%} + "
+                      f"量化指标 {quant_score:.1f} × {BLEND_QUANT:.0%} = {raw:.1f}")
+    elif base_score is not None:
+        blend = {"base": 1.0}
+        raw = base_score
+        blend_note = (f"量化指标样本不足，总分完全来自八维模型（{base_score:.1f}）")
+    elif quant_score is not None:
+        blend = {"quant": 1.0}
+        raw = quant_score
+        blend_note = (f"八维模型样本不足，总分完全来自量化指标（{quant_score:.1f}）")
+    else:
+        blend = {}
+        raw = 50.0
+        blend_note = "两个视角都因样本不足被剔除，无法给出可靠分数。"
+
     insufficient = (
-        peer_part.score is None
+        (base_score is None and quant_score is None)
         or analysis.total_real < 20
         or confidence.level in ("low", "none")
     )
 
-    if peer_part.score is None:
+    total_f = _shrink(raw, analysis, confidence)
+    total = int(round(max(0.0, min(100.0, total_f))))
+    if base_score is None and quant_score is None:
         total = 50
-        raw = 50.0
         tier = TIER_UNCLEAR
     else:
-        raw = peer_part.score
-        total_f = _shrink(raw, analysis, confidence)
-        total = int(round(max(0.0, min(100.0, total_f))))
         tier = tier_for(total)
-        if insufficient:
+        if insufficient and (confidence.level == "none" or analysis.total_real < 20):
             # 样本不足时，绝不给强结论
-            tier = TIER_UNCLEAR if confidence.level == "none" or analysis.total_real < 20 else tier
+            tier = TIER_UNCLEAR
 
     # 找出主要加分项 / 拖后腿项。
     # 关键：按「对总分的实际影响」排序，而不是按分数本身——否则会出现
@@ -488,6 +537,10 @@ def score(analysis: Analysis) -> ScoreResult:
         evidence=evidence,
         comfort_title=c_title,
         comfort_body=c_body,
+        base_score=base_score,
+        quant_score=quant_score,
+        blend=blend,
+        blend_note=blend_note,
     )
 
 
@@ -496,8 +549,10 @@ def explain(result: ScoreResult, analysis: Analysis) -> str:
     lines: list[str] = []
     label_of = {k: d.label for k, d in analysis.dimensions.items()}
 
-    lines.append(f"总分 {result.total}（原始分 {result.raw_total:.1f}，"
+    lines.append(f"总分 {result.total}（综合原始分 {result.raw_total:.1f}，"
                  f"样本收缩后 {result.total}）→ {result.tier.title}")
+    if result.blend_note:
+        lines.append(f"综合方式：{result.blend_note}")
     if result.insufficient:
         lines.append("⚠ 样本不足，结论已降级为「仅供参照」。")
     lines.append(f"可信度：{result.confidence.label}（{result.confidence.score:.2f}）")

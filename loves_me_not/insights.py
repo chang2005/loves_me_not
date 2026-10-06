@@ -145,10 +145,14 @@ class DayStat:
 
     date: datetime
     count: int
-    #: 当次聊天时长（分钟）= 当天最后一条消息 − 第一条消息
+    #: 当天首尾消息的跨度（分钟）——注意这不等于「聊了多久」：
+    #: 早上说一句、晚上说一句也会算出十几个小时。
     span_minutes: float
     me_count: int
     peer_count: int
+    #: 当天各段对话的时长之和（分钟）——**热力图用它上色**。
+    #: 这才是「当次聊天时长」的诚实口径。
+    chat_minutes: float = 0.0
 
     @property
     def date_key(self) -> str:
@@ -355,18 +359,27 @@ def build_silences(sessions: Sequence[Session],
     return out
 
 
-def build_days(messages: Sequence[Message], me: str, peer: str) -> dict[str, DayStat]:
-    """按自然日聚合：消息数 + 当次聊天时长（当天最后一条 − 第一条）。
+def build_days(messages: Sequence[Message], me: str, peer: str,
+               sessions: Sequence[Session] | None = None) -> dict[str, DayStat]:
+    """按自然日聚合：消息数 + 当次聊天时长。
 
-    「当次聊天时长」的口径是**当天首尾消息的时间差**，不是把所有间隔加总——
-    后者会把白天上班的 8 小时空档也算成「在聊天」。
-    热力图用它来决定颜色深浅。
+    两个时长口径都存在，因为它们的含义完全不同：
+
+    * ``span_minutes`` = 当天首尾消息的时间差。**不是**「聊了多久」——
+      早上说一句、晚上说一句也会算出十几个小时。
+    * ``chat_minutes`` = 当天各段对话（30 分钟无消息即断开）的时长之和。
+      这才是「当次聊天时长」，**热力图用它上色**。
     """
     buckets: dict[str, list[Message]] = {}
     for m in messages:
         if m.is_system or m.timestamp is None:
             continue
         buckets.setdefault(m.timestamp.strftime("%Y-%m-%d"), []).append(m)
+
+    # 按天累计各段对话的时长
+    chat_minutes: dict[str, float] = {}
+    for s in (sessions or []):
+        chat_minutes[s.date_key] = chat_minutes.get(s.date_key, 0.0) + s.duration_minutes
 
     out: dict[str, DayStat] = {}
     for key, msgs in buckets.items():
@@ -376,12 +389,15 @@ def build_days(messages: Sequence[Message], me: str, peer: str) -> dict[str, Day
         assert first is not None and last is not None
         me_count = sum(1 for m in msgs if m.speaker == me)
         peer_count = sum(1 for m in msgs if m.speaker == peer)
+        span = (last - first).total_seconds() / 60.0
         out[key] = DayStat(
             date=first,
             count=len(msgs),
-            span_minutes=(last - first).total_seconds() / 60.0,
+            span_minutes=span,
             me_count=me_count,
             peer_count=peer_count,
+            # 没有会话信息时退回跨度，但至少不会高估得离谱
+            chat_minutes=chat_minutes.get(key, span),
         )
     return out
 
@@ -483,7 +499,7 @@ def metric_burst(messages: Sequence[Message], peer: str) -> QuantMetric:
         value=avg,
         display=f"平均 {avg:.1f} 条 / 5 分钟",
         score=score,
-        formula="把 TA 的消息按 5 分钟窗口分桶，统计**有消息的窗口**的平均条数；"
+        formula="把 TA 的消息按 5 分钟窗口分桶，统计「有消息的窗口」的平均条数；"
                 "映射曲线：平均 4 条 / 5 分钟 ≈ 100 分，1 条 ≈ 25 分",
         source="每条消息的时间戳（只算 TA）",
         note=f"共 {len(windows)} 个活跃窗口 · 峰值 {peak} 条"

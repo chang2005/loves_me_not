@@ -196,6 +196,21 @@ class Analysis:
     caveats: list[str] = field(default_factory=list)
     #: 高互动片段 / 降温片段等定性素材
     highlights: dict[str, list[Evidence]] = field(default_factory=dict)
+    # ---- 量化指标层（insights / timeline），由 :func:`analyze` 填充 ----
+    #: 五大量化指标与综合情感倾向
+    quant: object | None = None
+    #: 会话分段
+    sessions: list = field(default_factory=list)
+    #: 沉默空档
+    silences: list = field(default_factory=list)
+    #: 聊天足迹
+    footprint: object | None = None
+    #: 关键节点
+    timeline_nodes: list = field(default_factory=list)
+    #: 话题关键词
+    topics: list = field(default_factory=list)
+    #: 「TA 是怎样的人」
+    persona: list = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- #
@@ -1547,6 +1562,27 @@ def analyze(conv: Conversation, me: str, peer: str) -> Analysis:
     highlights["warm"] = warm
     highlights["cold"] = cold
 
+    # ---- 量化指标层 ----
+    # 放在这里（而不是各调用方）是为了让所有入口——CLI、JSON、报告——
+    # 拿到的是同一份、已经算好的结果，不会出现「报告有、JSON 没有」的偏差。
+    from . import insights as _insights, timeline as _timeline
+
+    sessions = _insights.build_sessions(real)
+    silences = _insights.build_silences(sessions)
+    days = _insights.build_days(real, me, peer, sessions)
+    quant = _insights.compute_quantifiers(real, sessions, silences, peer)
+    footprint = _timeline.build_footprint(real, me, peer, sessions, silences, days)
+    nodes = _timeline.build_timeline(real, me, peer, sessions, silences, footprint,
+                                     message_sentiment)
+    topics = _timeline.extract_topics(real, me, peer)
+    persona = _timeline.build_persona(real, me, peer, sessions, silences, footprint)
+
+    if quant.raw_total is None:
+        caveats.append("五个量化指标都因样本不足被剔除，综合情感倾向无法计算。")
+    else:
+        for key in quant.skipped:
+            caveats.append(f"量化指标「{quant.metrics[key].label}」样本不足，已从综合情感倾向中剔除。")
+
     return Analysis(
         me=me,
         peer=peer,
@@ -1565,4 +1601,11 @@ def analyze(conv: Conversation, me: str, peer: str) -> Analysis:
         cards=cards,
         caveats=caveats,
         highlights=highlights,
+        quant=quant,
+        sessions=sessions,
+        silences=silences,
+        footprint=footprint,
+        timeline_nodes=nodes,
+        topics=topics,
+        persona=persona,
     )

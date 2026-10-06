@@ -315,13 +315,13 @@ def build_timeline(messages: Sequence[Message], me: str, peer: str,
             detail=f"{busiest.count} 条消息，聊了 {busiest.span_minutes:.0f} 分钟",
             weight=0.7,
         ))
-        longest_day = max(footprint.days.values(), key=lambda d: d.span_minutes)
+        longest_day = max(footprint.days.values(), key=lambda d: d.chat_minutes)
         if longest_day.date_key != busiest.date_key:
             nodes.append(KeyNode(
                 kind="longest_day",
                 title="聊得最久的一天",
                 when=longest_day.date,
-                detail=f"从早聊到晚，跨度 {longest_day.span_minutes / 60:.1f} 小时、"
+                detail=f"各段对话加起来 {_fmt_duration(longest_day.chat_minutes * 60)}、"
                        f"{longest_day.count} 条消息",
                 weight=0.7,
             ))
@@ -378,27 +378,30 @@ def build_timeline(messages: Sequence[Message], me: str, peer: str,
                     weight=0.8,
                 ))
 
-    # 8. 热度转折点：把时间轴分成前后两半，找消息密度变化最大的那个月
-    if len(footprint.months) >= 3:
+    # 8. 热度转折点：比较每个月的「前一个月」与「后一个月」的平均消息量
+    #    （用 *居中* 窗口，且要求两侧都有可比的活动量）。
+    #    不这样做的话，从「3 条」跳到「12 条」这种噪声也会被标成转折点。
+    if len(footprint.months) >= 4:
         counts = [m.count for m in footprint.months]
         best_idx, best_delta = None, 0.0
-        for i in range(1, len(counts)):
+        for i in range(1, len(counts) - 1):
             before = mean(counts[max(0, i - 2):i])
-            after = mean(counts[i:min(len(counts), i + 2)])
-            if before <= 0:
+            after = mean(counts[i + 1:min(len(counts), i + 3)])
+            # 两侧都必须有实质活动量，才谈得上「转折」
+            if before < 4 or after < 4:
                 continue
             delta = (after - before) / before
             if abs(delta) > abs(best_delta):
                 best_idx, best_delta = i, delta
-        if best_idx is not None and abs(best_delta) >= 0.35:
+        if best_idx is not None and abs(best_delta) >= 0.5:
             m = footprint.months[best_idx]
-            direction = "明显变多" if best_delta > 0 else "明显变少"
+            direction = "变多" if best_delta > 0 else "变少"
             nodes.append(KeyNode(
                 kind="turning",
                 title="热度转折点",
                 when=datetime.strptime(m.label + "-01", "%Y-%m-%d"),
-                detail=f"从 {m.pretty} 起，聊天量{direction}"
-                       f"（{abs(best_delta) * 100:.0f}%）",
+                detail=f"以 {m.pretty} 为界，前后两个月的聊天量"
+                       f"{direction}了 {abs(best_delta) * 100:.0f}%",
                 weight=0.95,
             ))
 
