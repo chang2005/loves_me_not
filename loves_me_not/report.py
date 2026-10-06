@@ -1641,9 +1641,9 @@ def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
              body: str) -> str:
     """包一个带序号与锚点的区块。
 
-    ``data-reveal`` 让区块在滚入视野时淡入上浮（见动效系统 CSS/JS）。
-    子元素没有被自动打标签，由各渲染函数自己决定哪一层参与入场，
-    这样同一个区块里可以有层次而不是整块一起动。
+    ``data-reveal`` 只打在**内容卡片**上，**不打在标题上**。
+    标题一旦被藏起来而揭示又没触发，读者会看到「有内容没标题」的缺口，
+    比整块没动画难看得多；而且标题本身也不适合做位移动画。
     """
     entry = next((it for it in items if it[0] == sid), None)
     title = entry[2] if entry else sid
@@ -1651,7 +1651,7 @@ def _section(sid: str, index: int, items: list[tuple[str, str, str, str]],
     desc_html = f'<p class="section-desc">{esc(desc)}</p>' if desc else ""
     return f"""
 <section class="section" id="{sid}">
-  <div class="section-head" data-reveal>
+  <div class="section-head">
     <h2><span class="section-num">{index:02d}</span>{esc(title)}</h2>
     {desc_html}
   </div>
@@ -1838,14 +1838,15 @@ _SPY_SCRIPT = """
   window.setTimeout(refresh, 180);
   window.setTimeout(refresh, 700);
 
-  // 最后一道保险：无论前面发生什么，3 秒后把还没揭示的一律显示出来。
-  // 宁可少一个动画，也不能让读者看到空白。
+  // 最后一道保险：无论前面发生什么，1.5 秒后把还没揭示的一律显示出来。
+  // 宁可少一个动画，也不能让读者看到缺口。
+  // （标题不参与入场，所以「有内容没标题」这种缺口不会出现。）
   window.setTimeout(function () {
     for (var i = 0; i < revealTargets.length; i++) {
       var el = revealTargets[i];
       if (!el.classList.contains('is-in')) el.classList.add('is-in');
     }
-  }, 3000);
+  }, 1500);
 })();
 </script>
 """

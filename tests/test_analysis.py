@@ -468,8 +468,16 @@ class TestReport(unittest.TestCase):
 
     def test_reveal_has_last_resort_timeout(self):
         """主脚本必须有最终兜底：无论如何都要把内容显示出来。"""
-        self.assertIn("3000", self.html)   # 3 秒兜底计时器
+        self.assertIn("1500", self.html)   # 1.5 秒兜底计时器
         self.assertIn("is-in", self.html)
+
+    def test_section_headings_never_hidden(self):
+        """标题不参与入场动画——出现「有内容没标题」的缺口比没动画更糟。"""
+        import re as _re
+        heads = _re.findall(r'<div class="section-head"[^>]*>', self.html)
+        self.assertTrue(heads)
+        for h in heads:
+            self.assertNotIn("data-reveal", h, f"标题不应参与入场：{h}")
 
     def test_has_charset_and_viewport(self):
         self.assertIn('<meta charset="utf-8">', self.html)
