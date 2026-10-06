@@ -12,7 +12,7 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-2fa37a)](#-安装)
 [![Local Only](https://img.shields.io/badge/数据-仅本地处理-e1487f)](#-隐私与法律红线)
-[![Tests](https://img.shields.io/badge/tests-183%20passed-2fa37a)](#-测试)
+[![Tests](https://img.shields.io/badge/tests-237%20passed-2fa37a)](#-测试)
 [![License](https://img.shields.io/badge/license-MIT-8a4fd8)](LICENSE)
 
 [功能特性](#-功能特性) ·
@@ -199,8 +199,18 @@ python -m loves_me_not analyze "path/to/chat.txt" --me "我" --peer "TA" \
 
 ### 支持的输入格式
 
+| 格式 | 扩展名 | 说明 |
+|---|---|---|
+| **逐行文本** | `.txt` `.log` `.text` | 平台内置「导出聊天记录」直接产出的文件 |
+| **表格** | `.csv` | 自动识别分隔符与列名，支持中英文表头、无表头 |
+| **结构化 JSON** | `.json` | 导出工具的 JSON 数据文件，键名自动匹配 |
+| **单文件网页** | `.html` `.htm` | 导出工具生成的网页记录，数据内嵌在页面脚本里 |
+
+`--format` 可强制指定；默认 `auto` **先看扩展名、再看内容特征**，
+所以后缀改错、甚至没有扩展名也能认出来。
+
 <details open>
-<summary><b>两行式（最常见的导出格式）</b></summary>
+<summary><b>逐行文本（最朴素的格式）</b></summary>
 
 ```text
 2023-04-01 21:33:02 阿澈
@@ -243,6 +253,64 @@ localId,Time,Sender,Content
 </details>
 
 <details>
+<summary><b>结构化 JSON</b></summary>
+
+导出工具常见的形式都认，**键名不要求一致**：
+
+```json
+{
+  "session": { "wxid": "wxid_abc", "remark": "阿澈", "nickname": "澈" },
+  "messages": [
+    {
+      "createTime": 1680355982,
+      "type": "文本消息",
+      "content": "到家了跟我说一声",
+      "isSend": 0,
+      "senderDisplayName": "阿澈"
+    }
+  ]
+}
+```
+
+识别规则：
+
+- **时间**：Unix 秒 / 毫秒、ISO 8601、`2023-04-01 21:33:02`、`2023年4月1日 21:33`
+- **正文**：`content` / `text` / `msg` / `message` / `body` … 取第一个存在的
+- **说话人**：优先看「是不是我发的」（`isSend` / `isMe` / `s`）；
+  对方的名字取会话对象的 `remark`（备注）> `displayName` > `nickname`
+- **消息类型**：`文本消息` / `图片消息` / `引用消息` / `系统消息` …
+  映射成统一的媒体标记，无正文的图片等变成 `[图片]` 之类的占位
+
+> **判不出来源的记录不会被硬塞给某一方。** 例如自己另一台设备产生的同步记录
+> （`isSend` 为 0、但发送人 ID 就是你自己），会被当作系统消息排除，
+> 而不是算成「对方说了话」——宁可少几条，也不能把关系算反。
+</details>
+
+<details>
+<summary><b>单文件网页（HTML）</b></summary>
+
+导出工具生成的「聊天记录.html」通常把数据内嵌在页面里：
+
+```html
+<script>
+  window.WEFLOW_DATA = [
+    {"t":1680355982,"s":0,"b":"<div class=\"message-time\">…</div>…"}
+  ];
+</script>
+```
+
+解析方式不是「把网页当文本读」，而是**先把内嵌数据抠出来**：
+
+- 支持 `window.X = [...]`、`var X = {...}`、`<script type="application/json">`
+- 用**括号配平**扫描，所以正文里出现花括号、引号、单引号都不会截断
+- 对方的名字从 `<title>某某 - 聊天记录</title>` 取
+- 正文外层的时间标签会被剥掉（时间另有字段），
+  图片 / 表情 / 引用块转成可读标记
+
+那个网页里若根本没有聊天数据（就是个普通网页），会**明确报错**，不会编一份出来。
+</details>
+
+<details>
 <summary><b>其他被容错处理的形态</b></summary>
 
 - 方括号时间戳：`[2023-04-01 21:33:02] 阿澈`
@@ -251,6 +319,7 @@ localId,Time,Sender,Content
 - 单行冒号式：`阿澈: 到家了跟我说一声`
 - 多行消息：昵称行之后的连续行自动并入同一条
 - 系统消息：`撤回了一条消息`、`加入了群聊` 等自动识别并排除出统计
+- 编码：UTF-8 / GB18030 / Big5 / UTF-16 自动探测（含 BOM）
 </details>
 
 ---
@@ -358,12 +427,15 @@ localId,Time,Sender,Content
 内容多到超过一屏的页（如「维度明细」「分数是怎么算出来的」）会自然变高，
 不为了塞进一屏而压缩可读性——它依然是一个吸附点，只是需要多滚几下读完。
 
-> **关于移动端**：这一版**刻意不做移动端适配**。
-> 版式固定为 1240px 宽的桌面布局并写入 viewport，
-> 手机上会整体等比缩小显示（而不是重排成单列），
-> 这样每一页的构图在任何设备上都一致，翻页节奏也就稳定了。
-> 代价是小屏上需要双指放大阅读——如果你的场景主要是手机，
-> 可以在 `loves_me_not/report.py` 的 `_css()` 里补一组 `min-width` 媒体查询还原响应式。
+> **自适应布局**：宽屏是「左侧固定侧栏 + 右侧内容」，
+> 窄屏（< 1000px）自动折叠为「顶部可横滑标签栏 + 单栏内容」，
+> 手机竖屏还有一档更紧的断点。翻页吸附在所有尺寸下都生效。
+>
+> 吸附强度选的是 `proximity` 而不是 `mandatory`：
+> 后者会在每一次滚动都强制重算吸附点并把视口拽过去，是滚轮卡顿的主因。
+> 另外**刻意没有**在 CSS 里写 `scroll-behavior: smooth`——
+> 它会让所有滚动都变成动画，与吸附引擎打架，
+> 导致点导航时页面被拽回原位（表现为「点了切不过去」）。
 
 ### 五个量化指标
 
@@ -453,11 +525,30 @@ localId,Time,Sender,Content
 > 1. **元素默认可见**，只有脚本加上 `html.anim-ready` 之后 CSS 才把它们藏起来
 >    等待入场。所以脚本没跑、跑挂或被浏览器拦掉时，页面就是一份
 >    「没有动画的正常文档」，而不是一片空白。
-> 2. **揭示逻辑不依赖任何单一事件**。曾经因为「元素初始隐藏 + 滚动回调没触发」，
->    导致「关键节点」整页空白。现在有三道保险：只要还有元素没显示就用
->    `requestAnimationFrame` 持续检查、0.6s 与 2s 两个看门狗定时器、
->    以及 `MutationObserver` 兜住动态内容。
->    宁可少一个动画，也绝不让读者看到空白。
+> 2. **揭示逻辑既不依赖单一事件，也不每帧扫全表。**
+>    曾经因为「元素初始隐藏 + 滚动回调没触发」导致「关键节点」整页空白；
+>    而为了兜底写成「只要还有元素没显示就每帧遍历一遍」，
+>    又让每次滚动都做几十次强制同步布局，成了滚轮卡顿的来源。
+>    现在主路径用 `IntersectionObserver` 精准触发（零布局读取），
+>    兜底是**有限次数**的视口内扫描 + 最后一次无条件全显。
+
+---
+
+## ⚡ 滚动性能
+
+滚轮卡顿排查下来是三个原因叠加，都已修掉：
+
+| 原因 | 处理 |
+|---|---|
+| `scroll-snap-type: y mandatory` 每次滚动都强制重算吸附点、把视口拽过去 | 改用 `proximity`，只在靠近吸附点时吸附 |
+| CSS 里写了 `scroll-behavior: smooth`，与吸附引擎互相打架 | 去掉全局声明，只在点击导航时用 `scrollTo` 的 `smooth` 参数 |
+| 揭示逻辑每帧遍历全部 69 个 `[data-reveal]` 元素（强制同步布局） | 改为 `IntersectionObserver` 事件驱动 + 有限次兜底 |
+
+另外还做了两件小事：每个区块加 `contain: layout paint style` 限制重绘范围；
+滚动高亮只在**激活项真的变化时**才改 DOM，而不是每次滚动都写一遍 class。
+
+改完之后，滚动过程中 `getBoundingClientRect` 调用约 **1.7 次/步**、
+`offsetTop` 读取 **0 次**（改之前是每帧几十次）。
 
 ---
 
@@ -467,7 +558,7 @@ localId,Time,Sender,Content
 python -m unittest discover -s tests -v
 ```
 
-**183 项测试**，其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
+**237 项测试**，其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
 
 - 无信息的维度必须被剔除，而不是当成 0 分（含「表情线索不可得」的情形）
 - 样本不足必须降级为「样本不足」，不得输出强结论
@@ -480,8 +571,11 @@ python -m unittest discover -s tests -v
 - 个性化文案里的数字必须与真实统计对得上
 - 词云排版不得重叠；仪表盘 dasharray 长度必须与分数成比例
 - 报告必须自包含；`[data-reveal]` 的基础规则里**不许**出现 `opacity: 0`
-- 揭示必须有看门狗兜底，且每个区块都要有页码
-- 不得残留任何按视口宽度重排布局的媒体查询（已取消移动端适配）
+- 揭示必须有兜底，但**不许**每帧遍历全部元素（滚动性能）
+- 侧栏点击必须由脚本接管（吸附会让原生锚点跳转失效）
+- 结构化解构：`isSend` 方向、时间戳解析、正文里的时间标签必须剥掉
+- 单字母弱字段（如 `b`）必须同时具备其它消息特征才认作正文
+- 认不出来的 JSON / 网页必须报错，不得猜
 - 内联脚本必须通过 `node --check` 语法校验
 - 包内不许出现任何网络或子进程依赖（守住「全本地」）
 
@@ -496,7 +590,8 @@ loves-me-not/
 ├── docs/                    # README 用的截图
 ├── loves_me_not/
 │   ├── __main__.py          # CLI：analyze / inspect
-│   ├── parser.py            # 容错解析：txt / csv → Message[]
+│   ├── parser.py            # 容错解析：txt / csv → Message[]，并做格式识别
+│   ├── structured.py        # JSON / 网页内嵌数据的解析（字段名容错）
 │   ├── lexicon.py           # 情感词典 + 亲昵称呼 + 疑问词（可审计、可替换）
 │   ├── metrics.py           # 八个描述性维度的计算
 │   ├── insights.py          # 五个量化指标 + 会话分段 + 沉默 + 日历聚合
@@ -506,7 +601,7 @@ loves-me-not/
 │   └── report.py            # 单文件 HTML / JSON 生成
 ├── samples/                 # 合成示例数据（非真实记录）
 ├── demo/                    # 由示例数据生成的成品报告
-└── tests/                   # 183 项单元测试
+└── tests/                   # 237 项单元测试
 ```
 
 ### 想看看它长什么样？
@@ -681,5 +776,5 @@ MIT。用它之前，请先对得起聊天记录另一端的那个人。
 
 <div align="center">
 <br>
-<sub>🌼 he loves me, he loves me not…</sub>
+<sub>🌼 she/he loves me, she/he loves me not…</sub>
 </div>

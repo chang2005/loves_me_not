@@ -10,6 +10,8 @@
 | [`demo_paste_oneline.txt`](demo_paste_oneline.txt) | 单行粘贴式 `昵称  日期 时间` | 含一条撤回系统消息 |
 | [`demo_table.csv`](demo_table.csv) | 表格 `localId,Time,Sender,Content` | 列名顺序与中文表头两种匹配路径 |
 | [`demo_too_short.txt`](demo_too_short.txt) | 两行式时间戳，仅 5 条 | **样本不足**：用来验证「不够就说不够，不得虚构结论」 |
+| [`demo_export.json`](demo_export.json) | 结构化 JSON | 会话对象 + 14 种消息类型；含「自己另一台设备」的同步记录 |
+| [`demo_export_webfile.html`](demo_export_webfile.html) | 网页单文件 | 数据内嵌在 `window.WEFLOW_DATA`；正文带时间标签、图片、内联表情、引用 |
 
 ## 用它们试一试
 
@@ -22,9 +24,18 @@ python -m loves_me_not analyze "samples/demo_two_block_cooling.txt" \
     --me "我" --peer "阿澈" -o out/report.html
 ```
 
-`demo_too_short.txt` 值得单独跑一次：它会触发报告顶部那条
-「⚠ 样本不足」横幅，并把 8 个维度全部标成 `N/A`——
-这是这个项目最重要的一道闸门。
+几个值得单独跑的：
+
+- **`demo_too_short.txt`** —— 触发报告顶部那条「⚠ 样本不足」横幅，
+  并把 8 个维度全部标成 `N/A`。这是这个项目最重要的一道闸门。
+- **`demo_export.json`** —— 验证结构化格式：说话人方向、消息类型映射、
+  以及「判不出来源的记录不硬塞给任何一方」。
+- **`demo_export_webfile.html`** —— 验证网页内嵌数据的提取：
+  正文外层的时间标签必须被剥掉，否则统计会被时间字符串污染。
+
+> 这两个结构化样例都是**手写合成**的，用于回归测试。
+> 仓库里**不会**包含任何真实聊天记录——`data/` 与 `samples/local/` 都已在
+> `.gitignore` 中，你可以放心把自己的导出放在那里做测试。
 
 ## 换成你自己的记录
 

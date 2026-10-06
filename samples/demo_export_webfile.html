@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>小满同学 - 聊天记录</title>
+<style>
+  body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
+  .page { max-width: 720px; margin: 0 auto; }
+  .header { padding: 16px; background: #fff; }
+  .message-row { display: flex; gap: 8px; padding: 6px 12px; }
+  .message-media { max-width: 180px; border-radius: 8px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <h1 class="title">小满同学</h1>
+      <div class="meta"><span>7 条消息</span><span>私聊</span></div>
+    </div>
+    <div class="scroll-container" id="messages"></div>
+  </div>
+
+  <!-- Data Injection -->
+  <script>
+    window.WEFLOW_DATA = [
+{"i": 1, "t": 1704067200, "s": 1, "a": "<img src=\"avatars/demo_me.jpg\" alt=\"我\" />", "b": "<div class=\"message-time\">2024-01-01 08:00:00</div><div class=\"message-content\"><div class=\"message-text\">早</div></div>", "p": "1"},
+{"i": 2, "t": 1704067260, "s": 0, "a": "<img src=\"avatars/demo_peer.jpg\" alt=\"小满同学\" />", "b": "<div class=\"message-time\">2024-01-01 08:01:00</div><div class=\"message-content\"><div class=\"message-text\">早呀，今天第一节有课</div></div>", "p": "2"},
+{"i": 3, "t": 1704067320, "s": 1, "a": "<img src=\"avatars/demo_me.jpg\" alt=\"我\" />", "b": "<div class=\"message-time\">2024-01-01 08:02:00</div><div class=\"message-content\"><div class=\"message-text\">那我也得起</div></div>", "p": "3"},
+{"i": 4, "t": 1704067380, "s": 0, "a": "<img src=\"avatars/demo_peer.jpg\" alt=\"小满同学\" />", "b": "<div class=\"message-time\">2024-01-01 08:03:00</div><div class=\"message-content\"><img class=\"message-media image previewable\" src=\"../images/1_demo.jpg\" alt=\"图片消息\" /></div>", "p": "4"},
+{"i": 5, "t": 1704067440, "s": 0, "a": "<img src=\"avatars/demo_peer.jpg\" alt=\"小满同学\" />", "b": "<div class=\"message-time\">2024-01-01 08:04:00</div><div class=\"message-content\"><div class=\"message-text\"><span class=\"inline-emoji emoji\">[笑脸]</span>走啦</div></div>", "p": "5"},
+{"i": 6, "t": 1704074400, "s": 1, "a": "<img src=\"avatars/demo_me.jpg\" alt=\"我\" />", "b": "<div class=\"message-time\">2024-01-01 10:00:00</div><div class=\"message-content\"><div class=\"quoted-message\"><div class=\"quoted-sender\">小满同学</div><div class=\"quoted-text\">走啦</div></div><div class=\"message-text\">等我一下</div></div>", "p": "6"},
+{"i": 7, "t": 1704074460, "s": 0, "a": "<img src=\"avatars/demo_peer.jpg\" alt=\"小满同学\" />", "b": "<div class=\"message-time\">2024-01-01 10:01:00</div><div class=\"message-content\"><div class=\"message-text\">好，楼下等你</div></div>", "p": "7"}
+    ];
+  </script>
+  <script src="viewer.js"></script>
+</body>
+</html>

@@ -994,23 +994,70 @@ def _speaker_order(messages: list[Message]) -> list[str]:
 # 公共 API
 # --------------------------------------------------------------------------- #
 
+def _detect_format(path: Path, text: str) -> str:
+    """判断该用哪种解析方式。
+
+    顺序：扩展名 → 内容特征 → 兜底。
+    ``structured`` 指的是 JSON / 网页内嵌数据这类**结构化导出**，
+    它们不能按文本行解析。
+    """
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        return "structured"
+    if suffix in (".html", ".htm", ".xhtml"):
+        return "structured"
+    if suffix == ".csv":
+        return "csv"
+    if suffix in (".txt", ".log", ".md", ".text"):
+        return "text"
+    # 其它扩展名（含无扩展名）继续往下按内容判断
+
+    # 没有可用的扩展名线索时看内容
+    head = text.lstrip()[:2000].lower()
+    if head.startswith(("{", "[")):
+        return "structured"
+    if "<!doctype html" in head or "<html" in head:
+        return "structured"
+    if "application/json" in head:
+        return "structured"
+    # 内嵌数据的网页（数据在 <script> 里，开头可能是一堆 HTML）
+    if "weflow_data" in head or re.search(r"\b\w+\s*=\s*\[\s*\{", head):
+        return "structured"
+    return "csv" if _pick_delimiter(text) != "," else "text"
+
+
 def parse_file(path: str | Path, *, fmt: str = "auto") -> Conversation:
-    """解析一份聊天记录文件，返回 :class:`Conversation`。"""
+    """解析一份聊天记录文件，返回 :class:`Conversation`。
+
+    支持的格式（``fmt="auto"`` 时自动判断）：
+
+    ============  ====================================================
+    扩展名         解析方式
+    ============  ====================================================
+    ``.json``      结构化导出（字段名容错）
+    ``.html/.htm`` 单文件网页，从内嵌的 ``window.X = [...]`` 取数据
+    ``.csv``       表格（自动分隔符与列识别）
+    ``.txt/.log``  逐行文本（多种时间戳与说话人写法）
+    ============  ====================================================
+    """
     p = Path(path)
     text, encoding = read_text(p)
     report = ParseReport(path=str(p), encoding=encoding)
 
     fmt = (fmt or "auto").lower()
     if fmt == "auto":
-        suffix = p.suffix.lower()
-        if suffix == ".csv":
-            fmt = "csv"
-        elif suffix in (".txt", ".log", ".md", ".text"):
-            fmt = "text"
-        else:
-            fmt = "csv" if _pick_delimiter(text) != "," or text.count(",") > 20 else "text"
+        fmt = _detect_format(p, text)
 
-    if fmt == "csv":
+    if fmt in ("structured", "json", "html"):
+        from .structured import parse_structured
+        try:
+            messages, speakers, how = parse_structured(text, name=str(p))
+        except ParseError:
+            raise
+        except Exception as exc:  # pragma: no cover - 防御性
+            raise ParseError(f"结构化解析失败：{exc}") from exc
+        report.file_kind = how
+    elif fmt == "csv":
         try:
             messages, speakers = parse_csv(text, report)
         except ParseError:

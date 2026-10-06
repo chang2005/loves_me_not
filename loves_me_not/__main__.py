@@ -170,8 +170,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     ins = sub.add_parser("inspect", help="只解析输入文件，核对发言人识别是否正确")
     ins.add_argument("input", help="聊天记录文件（txt / csv / log）")
-    ins.add_argument("--format", choices=("auto", "text", "csv"), default="auto",
-                     help="强制指定格式（默认按扩展名与内容自动判断）")
+    ins.add_argument("--format", choices=("auto", "text", "csv", "json", "html"), default="auto",
+                     help="强制指定格式（默认按扩展名与内容自动判断；json/html 走结构化解析）")
     ins.set_defaults(func=cmd_inspect)
 
     ana = sub.add_parser("analyze", help="分析聊天记录并生成 HTML 报告")
@@ -181,8 +181,8 @@ def build_parser() -> argparse.ArgumentParser:
     ana.add_argument("-o", "--output", default="out/report.html",
                      help="报告输出路径（默认 out/report.html）")
     ana.add_argument("--json", help="同时输出机器可读的 JSON 结果")
-    ana.add_argument("--format", choices=("auto", "text", "csv"), default="auto",
-                     help="强制指定格式（默认自动判断）")
+    ana.add_argument("--format", choices=("auto", "text", "csv", "json", "html"), default="auto",
+                     help="强制指定格式（默认自动判断；json/html 走结构化解析）")
     ana.add_argument("--redact", action="store_true",
                      help="对报告中的手机号、身份证号等敏感串做打码（昵称保留）")
     ana.set_defaults(func=cmd_analyze)

@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1240, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <meta name="robots" content="noindex, nofollow">
 <title>TA 到底爱不爱我 · 阿澈 × 我 · 58 分</title>
@@ -64,18 +64,14 @@ img, svg { max-width: 100%; }
   color: var(--ink-faint); margin: 0 0 .4em; font-weight: 600;
 }
 
-/* ===================== 双栏骨架（固定桌面版式，不做移动端适配） =====================
-   版式宽度锁定在 --page-w（1240px），配合 <meta name="viewport" width=1240>，
-   手机上会整体等比缩小显示，而不是重排成单列。
-   这样每一页的构图在任何设备上都一致，翻页的节奏也就稳定了。 */
+/* ===================== 骨架：桌面双栏 / 窄屏单栏 ===================== */
 .layout {
   display: grid;
   grid-template-columns: var(--nav-w) minmax(0, 1fr);
   width: 100%;
   max-width: var(--page-w);
   margin: 0 auto;
-  /* 不要写 align-items: start —— 那会让侧栏只按内容高度收缩，
-     高度撑不满一屏，翻页时露出的空白也不好看。 */
+  /* 不要写 align-items: start —— 那会让侧栏只按内容高度收缩，撑不满一屏 */
   align-items: stretch;
 }
 
@@ -109,7 +105,7 @@ img, svg { max-width: 100%; }
   color: var(--nav-ink); font-size: .825rem; font-weight: 550;
   padding: 8px 11px; border-radius: 0 8px 8px 0;
   border-left: 2px solid transparent;
-  transition: background .25s ease, color .25s ease, border-color .25s ease;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
 }
 .nav-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
 .nav-link .nav-ico { margin-right: 4px; opacity: .85; }
@@ -128,15 +124,24 @@ img, svg { max-width: 100%; }
 
 /* ===================== 一页一页翻页 =====================
    每一页 = 一个 section，至少占满一屏，顶部对齐吸附点。
-   scroll-snap-type: y mandatory 让滚轮 / 触摸 / 键盘翻页都「停」在整页上。 */
+
+   两个刻意的选择：
+
+   1. 用 proximity 而不是 mandatory。mandatory 会在每一次滚动都
+      强制重算最近吸附点并把视口拽过去，是滚轮卡顿的主要来源；
+      proximity 只在靠近吸附点时才吸附，保留手感又不跟用户较劲。
+   2. 不要写 scroll-behavior: smooth。它会让所有滚动都变成动画，
+      与吸附引擎互相打架——程序化滚动（点导航）会被拽回原位，
+      这正是「点了切不过去」的成因。平滑滚动只在点击导航时
+      用 scrollTo 的 smooth 参数临时启用。
+      （注意：这里是 CSS 模板，注释里也不能出现单花括号。） */
 html {
-  scroll-snap-type: y mandatory;
-  scroll-padding-top: 0;
-  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
+  overscroll-behavior-y: none;
 }
 .section {
   scroll-snap-align: start;
-  scroll-snap-stop: always;
+  scroll-snap-stop: normal;
   min-height: 100vh;
   box-sizing: border-box;
   padding: 64px 0 56px;
@@ -145,9 +150,9 @@ html {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  /* 限制布局/重绘影响范围：滚动时不必为整页重算样式 */
+  contain: layout paint style;
 }
-/* 内容本来就很长的页：让它们自然变高，不要为了塞进一屏而压缩可读性 */
-.section.is-tall { justify-content: flex-start; }
 .section:last-of-type { border-bottom: none; }
 
 /* 页码：右上角的「03 / 14」 */
@@ -464,9 +469,90 @@ footer {
 footer p { margin: 0 0 .6em; }
 footer b { color: var(--ink-soft); }
 
+/* =====================================================================
+   窄屏（< 1000px）：折叠为顶部标签栏 + 单栏内容
+   —— 保持自适应，页面在任何屏幕上都能正常阅读与翻页。
+   ===================================================================== */
+@media (max-width: 999px) {
+  :root { --fs-base: 14.5px; }
+
+  .layout {
+    display: block;
+    max-width: none;
+  }
+
+  /* 侧栏变成顶部横向标签栏 */
+  .nav {
+    position: sticky; top: 0; height: auto;
+    flex-direction: row; align-items: center; gap: 4px;
+    padding: 0 10px;
+    border-right: none; border-bottom: 1px solid rgba(255, 255, 255, .1);
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-brand { padding: 10px 10px 10px 0; flex: none; }
+  .brand-mark { width: 26px; height: 26px; font-size: 13px; border-radius: 8px; }
+  .brand-title { font-size: .84rem; }
+  .brand-sub { display: none; }
+
+  .nav-list {
+    flex-direction: row; gap: 2px; padding: 8px 0;
+    overflow: visible; flex: none;
+  }
+  .nav-link {
+    white-space: nowrap; border-left: none; border-radius: 99px;
+    padding: 6px 11px; font-size: .78rem;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-link.is-active { border-left: none; border-bottom-color: var(--peer); }
+  .nav-foot { display: none; }
+
+  .main { padding: 0 18px; }
+  .section { padding: 40px 0 40px; min-height: auto; }
+  .section-head h2 { font-size: 1.18rem; }
+  .section-desc { font-size: .8rem; }
+
+  /* 所有多栏栅格退回单栏 */
+  .verdict-grid { display: block; }
+  .gauge-wrap { margin: 0 auto 10px; max-width: 280px; }
+  .verdict-text h1 { font-size: 1.5rem; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); }
+  .chart-grid, .dim-grid, .wins, .persona-grid { grid-template-columns: 1fr; }
+  .card, .chart-card, .dim-card, .win, .bd, .persona-card, .ev, .q-item { padding: 14px 13px; }
+  .comfort { padding: 34px 0; }
+  .comfort h2 { font-size: 1.05rem; }
+
+  /* 窄屏防溢出：长段落、长串（URL / 无空格英文）都要能换行，
+     否则会把整页撑宽、出现横向滚动条。 */
+  .verdict-text p, .comfort p, .ev, .tl-detail, .caveat, .caveat p, footer p,
+  .section-desc, .q-desc, .dim-note {
+    overflow-wrap: anywhere; word-break: break-word; min-width: 0;
+  }
+  .card, .chart-card, .dim-card, .win, .bd, .persona-card, .stat, .q-item,
+  .verdict-text, .section { min-width: 0; }
+  /* 图表与热力图允许在自己内部横向滚动，而不是撑宽页面 */
+  .heat-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+  .chart-card, .chart-box, .tl-list, .dim-card { max-width: 100%; }
+  .q-head, .ev-head, .tl-head { flex-wrap: wrap; row-gap: 4px; }
+
+  /* 触屏上 hover 浮起没有意义，关掉可以少一层合成开销 */
+  .stat:hover, .q-item:hover, .persona-card:hover, .ev:hover,
+  .tl-body:hover, .win:hover, .dim-card:hover { transform: none; }
+}
+
+/* 手机竖屏：进一步收紧 */
+@media (max-width: 620px) {
+  .main { padding: 0 13px; }
+  .section { padding: 30px 0 32px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .chips { grid-template-columns: 1fr 1fr; }
+  .gauge-num { font-size: 62px; }
+  .mini { grid-template-columns: 54px 1fr 30px; }
+}
+
 /* ===================== 打印 =====================
-   打印时取消翻页吸附，让内容自然连续排布。
-   （这里已经没有媒体查询式的响应式布局了：版式固定为桌面宽度。） */
+   打印时取消翻页吸附，让内容自然连续排布。 */
 @media print {
   html { scroll-snap-type: none; }
   body { background: #fff; }
@@ -475,7 +561,7 @@ footer b { color: var(--ink-soft); }
   .main { padding: 0; }
   .section {
     min-height: 0; padding: 18px 0; border-bottom: none;
-    display: block; scroll-snap-align: none;
+    display: block; scroll-snap-align: none; contain: none;
   }
   .card, .dim-card, .chart-card, .ev, .stat, .q-item, .persona-card, .tl-body {
     break-inside: avoid; box-shadow: none;
@@ -1497,7 +1583,7 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
       <p>工具只能看见文字，看不见人。沉默可能是冷淡，也可能是他那天加班到十一点、
       手机没电，或者他本来就不太会说话。</p>
       
-      <p>生成时间：2026-10-06 17:37 · loves-me-not v0.1.0</p>
+      <p>生成时间：2026-10-06 18:01 · loves-me-not v0.1.0</p>
     </footer>
 
   </main>
@@ -1511,7 +1597,8 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce) { root.classList.add('no-motion'); }
 
-  /* ---------- 1. 章节导航高亮 ---------- */
+  /* ---------- 1. 章节导航：切换 + 高亮 ---------- */
+
   var links = Array.prototype.slice.call(document.querySelectorAll('.nav-link'));
   var byId = {};
   links.forEach(function (a) {
@@ -1521,39 +1608,124 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
   var sections = Object.keys(byId)
     .map(function (id) { return document.getElementById(id); })
     .filter(Boolean);
-  var visible = {};
 
-  function highlight() {
-    if (!sections.length) return;
-    var best = null, bestTop = Infinity;
-    sections.forEach(function (s) {
-      if (!visible[s.id]) return;
-      var top = Math.abs(s.getBoundingClientRect().top);
-      if (top < bestTop) { bestTop = top; best = s.id; }
+  // 缓存每个区块的文档坐标，避免滚动时反复读 offsetTop 触发重排
+  var tops = [];
+  function measure() {
+    tops = sections.map(function (s) {
+      return { id: s.id, top: s.getBoundingClientRect().top + window.scrollY };
     });
-    if (!best) {
-      var y = window.scrollY + 140;
-      sections.forEach(function (s) { if (s.offsetTop <= y) best = s.id; });
-    }
-    if (!best) return;
-    links.forEach(function (a) { a.classList.toggle('is-active', a === byId[best]); });
-    // 侧栏里当前项若被挤出可视区，轻轻滚一下（无移动端适配，只此一处）
-    var active = byId[best];
-    if (active && active.scrollIntoView) {
-      active.scrollIntoView({ block: 'nearest' });
-    }
   }
 
-  if (sections.length && 'IntersectionObserver' in window) {
-    var navIo = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
-      highlight();
-    }, { rootMargin: '-10% 0px -70% 0px', threshold: [0, 0.01, 0.5] });
-    sections.forEach(function (s) { navIo.observe(s); });
-    window.addEventListener('scroll', highlight, { passive: true });
-    window.addEventListener('resize', highlight);
-    highlight();
+  var activeId = null;
+  function setActive(id) {
+    // 只在真的变了才动 DOM：滚动时每帧改 class 会不停触发样式重算
+    if (id === activeId) return;
+    activeId = id;
+    for (var i = 0; i < links.length; i++) {
+      links[i].classList.toggle('is-active', links[i] === byId[id]);
+    }
+    var a = byId[id];
+    if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
   }
+
+  function currentId() {
+    var y = window.scrollY + window.innerHeight * 0.32;
+    var pick = sections.length ? sections[0].id : null;
+    for (var i = 0; i < tops.length; i++) {
+      if (tops[i].top <= y) pick = tops[i].id;
+    }
+    return pick;
+  }
+
+  var spyQueued = false;
+  function onScroll() {
+    if (spyQueued) return;
+    spyQueued = true;
+    var run = function () {
+      spyQueued = false;
+      setActive(currentId());
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else window.setTimeout(run, 40);
+  }
+
+  /* 点击导航用脚本接管滚动，而不是依赖浏览器默认的锚点行为。
+     原因：``scroll-snap-type`` 与 ``scroll-behavior: smooth`` 组合时，
+     部分浏览器会在平滑滚动途中被吸附点拽回原位，表现就是「点了没反应」。
+
+     为了不再受吸附引擎影响，这里不调用 ``scrollIntoView``，
+     而是算出目标的文档坐标后直接 ``scrollTo``；滚动期间临时关掉吸附，
+     滚完再恢复。即使旧浏览器不触发 ``scrollend``，
+     兜底也只会退回「不吸附」，不会卡在半路。 */
+  function navOffset() {
+    // 窄屏时导航变成顶部横条，用它的实际高度做偏移
+    var nav = document.querySelector('.nav');
+    var wide = window.innerWidth >= 1000;
+    return (nav && !wide) ? Math.round(nav.getBoundingClientRect().height) : 0;
+  }
+
+  /* 恢复吸附。不能用「固定等 N 毫秒」收尾：
+     平滑滚动比 N 慢时吸附就提前恢复，正好把滚动拽回原位——
+     这正是「点了切不过去」的成因。
+     改成轮询滚动位置直到它连续两帧不变，确认真的停了才恢复。 */
+  function restoreSnapWhenSettled(prevSnap) {
+    var html = document.documentElement;
+    var last = -1, stable = 0, tries = 0;
+    function step() {
+      var y = Math.round(window.scrollY);
+      if (y === last) stable++; else stable = 0;
+      last = y;
+      tries++;
+      // 连续 2 次相同视为停止；最多等约 1.2 秒，避免极端情况下卡住
+      if (stable >= 2 || tries > 75) {
+        html.style.scrollSnapType = prevSnap || '';
+        return;
+      }
+      if (window.requestAnimationFrame) window.requestAnimationFrame(step);
+      else window.setTimeout(step, 16);
+    }
+    if (window.requestAnimationFrame) window.requestAnimationFrame(step);
+    else window.setTimeout(step, 16);
+  }
+
+  function jumpTo(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var html = document.documentElement;
+    var prevSnap = html.style.scrollSnapType;
+    html.style.scrollSnapType = 'none';       // 先让路，避免被吸附打断
+
+    var doc = document.scrollingElement || html;
+    var y = Math.max(0, Math.round(el.getBoundingClientRect().top + doc.scrollTop)
+                        - navOffset());
+    if (!reduce && typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    } else {
+      doc.scrollTop = y;
+      html.style.scrollSnapType = prevSnap || '';
+      setActive(id);
+      return;
+    }
+
+    setActive(id);
+    restoreSnapWhenSettled(prevSnap);
+  }
+
+  links.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var href = a.getAttribute('href') || '';
+      if (href.charAt(0) !== '#') return;
+      e.preventDefault();                     // 交给我们自己滚
+      jumpTo(href.slice(1));
+    });
+  });
+
+  measure();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', function () { measure(); onScroll(); });
+  window.addEventListener('load', function () { measure(); onScroll(); });
+  setActive(currentId());
 
   /* ---------- 2. 入场动效 ---------- */
 
@@ -1632,16 +1804,18 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
   }
 
   /* ------------------------------------------------------------------
-     揭示逻辑：绝不能依赖「滚动事件一定会触发」。
-     之前就是栽在这里——元素初始隐藏，而滚动回调在快速滚动 /
-     滚动吸附跳转 / 无头浏览器里可能不触发，于是内容永久空白
-     （「关键节点」整页空白就是这么来的）。
+     揭示逻辑：绝不能依赖「滚动事件一定会触发」，也不能每帧扫全表。
 
-     现在三道保险，任何一道生效内容都不会缺：
-       1. 只要还有元素没揭示，就用 requestAnimationFrame 持续检查；
-       2. 若干次看门狗定时器，到点仍未揭示的直接全部显示；
-       3. MutationObserver 监听 DOM 变化，兜住动态插入的内容。
-     宁可少一个动画，也绝不让读者看到空白。
+     历史上的坑：元素初始隐藏 + 滚动回调没触发 → 「关键节点」整页空白。
+     所以要有兜底。但兜底不能是「只要还有元素没显示就每帧遍历全部」——
+     那样每次滚动都要做几十次 getBoundingClientRect（强制同步布局），
+     正是滚轮卡顿的来源之一。
+
+     现在的做法：
+       1. 主路径用 IntersectionObserver 精准触发，零布局读取；
+       2. 定时器兜底只扫「当前视口内」的少量元素，且最多跑有限次；
+       3. MutationObserver 兜住动态插入的内容；
+       4. 最后一次无条件全部显示，保证永远不会有空白。
      ------------------------------------------------------------------ */
 
   function inViewport(el) {
@@ -1650,70 +1824,86 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
     return r.top < vh - 30 && r.bottom > -30;
   }
 
-  function pending() {
-    for (var i = 0; i < revealTargets.length; i++) {
-      if (!revealTargets[i].classList.contains('is-in')) return true;
-    }
-    return false;
-  }
-
-  // 每帧检查：直到全部揭示为止。比监听 scroll 可靠得多，
-  // 因为滚动吸附跳转、锚点跳转、键盘翻页都会自然被下一帧捕捉到。
-  function tick() {
-    var left = false;
+  function refreshVisible() {
     for (var i = 0; i < revealTargets.length; i++) {
       var el = revealTargets[i];
       if (el.classList.contains('is-in')) continue;
       if (inViewport(el)) showNow(el);
-      else left = true;
-    }
-    measureLines();
-    if (left) {
-      if (window.requestAnimationFrame) window.requestAnimationFrame(tick);
-      else window.setTimeout(tick, 60);
     }
   }
 
   measureLines();
-  tick();                       // 首屏立刻处理
+  refreshVisible();             // 首屏立刻处理
   if (gaugeEl) runCounts(gaugeEl);
 
-  // 看门狗：无论发生什么，到点就把还在隐藏的一律显示出来。
-  // 第一次很快（0.6s），保证「切到某页发现是空的」不会发生。
-  window.setTimeout(function () {
-    for (var i = 0; i < revealTargets.length; i++) showNow(revealTargets[i]);
-  }, 600);
-  window.setTimeout(showAll, 2000);
+  // 主路径：进入视野就揭示。这是事件驱动，没有轮询开销。
+  if ('IntersectionObserver' in window) {
+    var revealIo = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        showNow(e.target);
+        revealIo.unobserve(e.target);
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.04 });
+    revealTargets.forEach(function (el) { revealIo.observe(el); });
+  }
 
-  // 滚动 / 缩放 / 加载完成后再补跑一次（有则更快，无则无害）
-  window.addEventListener('scroll', function () {
-    if (pending()) tick();
-  }, { passive: true });
-  window.addEventListener('resize', function () { tick(); });
-  window.addEventListener('load', function () { tick(); });
+  // 兜底：有限次数的定时检查（应对观察器不触发的情况）
+  var sweepLeft = 6;
+  function sweep() {
+    refreshVisible();
+    if (--sweepLeft > 0) window.setTimeout(sweep, 350);
+  }
+  window.setTimeout(sweep, 350);
+
+  // 最后一次无条件全部显示：无论前面发生什么，都不允许留下空白。
+  window.setTimeout(showAll, 2600);
+
+  // 滚动 / 缩放 / 加载完成后补跑一次（有则更快，无则无害）
+  var revealQueued = false;
+  function queueReveal() {
+    if (revealQueued) return;
+    revealQueued = true;
+    var run = function () { revealQueued = false; refreshVisible(); };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+    else window.setTimeout(run, 60);
+  }
+  window.addEventListener('scroll', queueReveal, { passive: true });
+  window.addEventListener('resize', queueReveal);
+  window.addEventListener('load', queueReveal);
 
   // DOM 变化（例如字体或图片撑开布局）后重新检查
   if (window.MutationObserver) {
     var mo = new MutationObserver(function () {
-      revealTargets = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
-      if (pending()) tick();
+      var fresh = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
+      if (fresh.length !== revealTargets.length) {
+        revealTargets = fresh;
+        refreshVisible();
+        if ('IntersectionObserver' in window) {
+          revealTargets.forEach(function (el) {
+            if (!el.classList.contains('is-in')) revealIo.observe(el);
+          });
+        }
+      }
     });
     mo.observe(document.body, { childList: true, subtree: true });
   }
 
   /* ------------------------------------------------------------------
-     一页一页翻页：方向键 / PageUp / PageDown / 空格 / Home / End。
-     滚动吸附已经能处理鼠标滚轮，键盘补齐更顺手的操作。
-     目标区块取「当前视口顶部之下最近的一页」。
+     键盘翻页：方向键 / PageUp / PageDown / 空格 / Home / End。
+     复用 jumpTo / 同一套吸附临时关闭逻辑，避免键盘翻页也被吸附打断。
      ------------------------------------------------------------------ */
-  var pages = Array.prototype.slice.call(document.querySelectorAll('.section, .comfort, footer'));
+  var pages = Array.prototype.slice.call(
+    document.querySelectorAll('.section, .comfort, footer')
+  );
 
   function currentIndex() {
-    var y = window.scrollY + 4;
-    for (var i = pages.length - 1; i >= 0; i--) {
-      if (pages[i].offsetTop <= y) return i;
+    var y = window.scrollY + window.innerHeight * 0.32;
+    var idx = 0;
+    for (var i = 0; i < pages.length; i++) {
+      if (pages[i].getBoundingClientRect().top + window.scrollY <= y) idx = i;
     }
-    return 0;
+    return idx;
   }
 
   function goTo(i) {
@@ -1721,9 +1911,14 @@ html.anim-ready [data-reveal]:not(.is-in) svg.wordcloud text { opacity: 0; }
     if (i >= pages.length) i = pages.length - 1;
     var el = pages[i];
     if (!el) return;
-    window.scrollTo({ top: el.offsetTop, behavior: reduce ? 'auto' : 'smooth' });
-    // 翻页后立刻检查一次，避免「切过去了但内容还没揭示」
-    window.setTimeout(tick, 30);
+    if (el.id && byId[el.id]) { jumpTo(el.id); return; }
+    // 结尾区块（安慰语 / 页脚）没有导航项，单独滚
+    var html = document.documentElement;
+    var prevSnap = html.style.scrollSnapType;
+    html.style.scrollSnapType = 'none';
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    window.setTimeout(function () { html.style.scrollSnapType = prevSnap || ''; },
+                      reduce ? 60 : 800);
   }
 
   document.addEventListener('keydown', function (e) {
