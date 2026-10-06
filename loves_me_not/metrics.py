@@ -1480,28 +1480,58 @@ def analyze(conv: Conversation, me: str, peer: str) -> Analysis:
         if not d.available:
             caveats.append(f"「{d.label}」无足够样本，已从总分中剔除。")
 
-    # 关键数据卡片
+    # 关键数据卡片。
+    # 重要：卡片不能把「样本不足、已被剔除」的数字当成事实展示。
+    # 例如只有 5 条消息时，「中位回复间隔 1.5 小时」看着像结论，
+    # 但它其实是 2 次回复的中位数——必须显式标注不可靠。
     resp = dims["response"]
     init = dims["initiative"]
     leng = dims["length"]
     end = dims["ending"]
     cards: list[tuple[str, str, str]] = [
         ("有效消息", f"{len(real)} 条", f"{me} {len(me_msgs)} · {peer} {len(peer_msgs)}"),
-        ("时间跨度", f"{span_days} 天" if span_days else "—", f"其中 {active_days} 天有对话"),
+        ("时间跨度", f"{span_days} 天" if span_days else "—",
+         f"首尾相差 {span_days} 天，其中 {active_days} 天有对话"),
     ]
-    p_med = next((s.display for s in resp.subs if s.key == "peer_median"), "—")
-    m_med = next((s.display for s in resp.subs if s.key == "me_median"), "—")
-    cards.append(("中位回复间隔", p_med, f"{me}：{m_med}"))
-    p_share = next((s.display for s in init.subs if s.key == "peer_threads"), "—")
-    cards.append(("TA 主动发起占比", p_share, f"共 {len(build_threads(real))} 轮对话"))
-    ratio = next((s.display for s in leng.subs if s.key == "peer_ratio"), "—")
-    cards.append(("实质性字数比", ratio, f"{peer} ÷ {me}"))
-    p_end = next((s.display for s in end.subs if s.key == "peer_share"), "—")
-    cards.append(("TA 收尾占比", p_end, "对话最后一句话的归属"))
-    p_late = next((s.display for s in dims["latenight"].subs if s.key == "peer_late_rate"), "—")
-    cards.append(("TA 深夜消息占比", p_late, "23:00–03:00"))
-    p_sent = next((s.display for s in dims["sentiment"].subs if s.key == "peer_mean"), "—")
-    cards.append(("TA 平均情绪分", p_sent, "-1 冷 ~ +1 暖"))
+
+    p_med_sub = next((s for s in resp.subs if s.key == "peer_median"), None)
+    m_med_sub = next((s for s in resp.subs if s.key == "me_median"), None)
+    if p_med_sub and p_med_sub.score is not None:
+        cards.append(("中位回复间隔", p_med_sub.display,
+                      f"{me}：{m_med_sub.display if m_med_sub else '—'}"))
+    else:
+        cards.append(("中位回复间隔", "—", "回复样本不足，未参与统计"))
+
+    p_share_sub = next((s for s in init.subs if s.key == "peer_threads"), None)
+    if p_share_sub and p_share_sub.score is not None:
+        cards.append(("TA 主动发起占比", p_share_sub.display,
+                      f"共 {len(build_threads(real))} 轮对话"))
+    else:
+        cards.append(("TA 主动发起占比", "—", "消息太少，未参与统计"))
+
+    ratio_sub = next((s for s in leng.subs if s.key == "peer_ratio"), None)
+    if ratio_sub and ratio_sub.score is not None:
+        cards.append(("实质性字数比", ratio_sub.display, f"{peer} ÷ {me}"))
+    else:
+        cards.append(("实质性字数比", "—", "实质性消息不足，未参与统计"))
+
+    p_end_sub = next((s for s in end.subs if s.key == "peer_share"), None)
+    if p_end_sub and p_end_sub.score is not None:
+        cards.append(("TA 收尾占比", p_end_sub.display, "对话最后一句话的归属"))
+    else:
+        cards.append(("TA 收尾占比", "—", "对话轮次不足，未参与统计"))
+
+    p_late_sub = next((s for s in dims["latenight"].subs if s.key == "peer_late_rate"), None)
+    if p_late_sub and p_late_sub.value is not None:
+        cards.append(("TA 深夜消息占比", p_late_sub.display, "23:00–03:00"))
+    else:
+        cards.append(("TA 深夜消息占比", "—", "无时间信息"))
+
+    p_sent_sub = next((s for s in dims["sentiment"].subs if s.key == "peer_mean"), None)
+    if p_sent_sub and p_sent_sub.score is not None:
+        cards.append(("TA 平均情绪分", p_sent_sub.display, "-1 冷 ~ +1 暖"))
+    else:
+        cards.append(("TA 平均情绪分", "—", "文本样本不足，未参与统计"))
 
     # 定性素材：最暖的片段
     highlights: dict[str, list[Evidence]] = {}

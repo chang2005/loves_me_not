@@ -119,6 +119,30 @@ class TestDimensionAvailability(unittest.TestCase):
         available = [d.key for d in analysis.dimensions.values() if d.available]
         self.assertGreaterEqual(len(available), 6)
 
+    def test_cards_do_not_assert_unreliable_numbers(self):
+        """样本不足时，关键数据卡片不能把被剔除的统计量当事实展示。"""
+        conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        cards = {title: (value, sub) for title, value, sub in analysis.cards}
+        for title in ("中位回复间隔", "TA 主动发起占比", "实质性字数比",
+                      "TA 收尾占比", "TA 平均情绪分"):
+            value, sub = cards[title]
+            self.assertEqual(value, "—", f"{title} 不该显示数值：{value}")
+            # 备注必须说清「为什么没有数」：不足 / 太少 / 无数据
+            self.assertTrue(
+                any(w in sub for w in ("不足", "太少", "无数据")),
+                f"{title} 缺少可靠性说明：{sub}",
+            )
+        # 计数类卡片仍然可以展示——它们不是「推算」，是「数出来的」
+        self.assertEqual(cards["有效消息"][0], "5 条")
+
+    def test_cards_show_values_when_sample_is_sufficient(self):
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        cards = {title: value for title, value, _sub in analysis.cards}
+        for title in ("中位回复间隔", "TA 主动发起占比", "TA 收尾占比"):
+            self.assertNotEqual(cards[title], "—", f"{title} 应当有数值")
+
 
 class TestChoosePair(unittest.TestCase):
     def test_two_speakers_auto(self):
