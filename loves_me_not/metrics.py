@@ -48,9 +48,19 @@ RUN_WINDOW = timedelta(minutes=3)
 SUBSTANTIVE_MIN_CHARS = 6
 SUBSTANTIVE_MAX_CHARS = 300
 
-#: 深夜时段
+#: 深夜时段（跨零点，23:00–03:00）。这个口径在 README、insights 与报告里必须一致。
 LATE_NIGHT_START = 23
 LATE_NIGHT_END = 3
+
+#: 深夜时段的展示文本
+LATE_NIGHT_LABEL = f"{LATE_NIGHT_START:02d}:00–{LATE_NIGHT_END:02d}:00"
+
+
+def is_late_night(hour: int) -> bool:
+    """判断某个小时是否属于深夜时段（跨零点，含 23 与 0/1/2）。"""
+    if LATE_NIGHT_START <= LATE_NIGHT_END:
+        return LATE_NIGHT_START <= hour < LATE_NIGHT_END
+    return hour >= LATE_NIGHT_START or hour < LATE_NIGHT_END
 
 #: 各维度的最小样本量
 MIN_FOR_REPLY = 10
@@ -1107,19 +1117,16 @@ def dimension_latenight(messages: Sequence[Message], me: str, peer: str) -> Dime
         assert m.timestamp is not None
         return m.timestamp.hour
 
-    def is_late(h: int) -> bool:
-        return h >= LATE_NIGHT_START or h < LATE_NIGHT_END
-
     peer_msgs = [m for m in real if m.speaker == peer]
     me_msgs = [m for m in real if m.speaker == me]
 
-    p_late = sum(1 for m in peer_msgs if is_late(hour_of(m)))
-    m_late = sum(1 for m in me_msgs if is_late(hour_of(m)))
+    p_late = sum(1 for m in peer_msgs if is_late_night(hour_of(m)))
+    m_late = sum(1 for m in me_msgs if is_late_night(hour_of(m)))
     p_late_rate = (p_late / len(peer_msgs)) if peer_msgs else None
     m_late_rate = (m_late / len(me_msgs)) if me_msgs else None
 
     # 深夜对话里 TA 的占比
-    late_all = [m for m in real if is_late(hour_of(m))]
+    late_all = [m for m in real if is_late_night(hour_of(m))]
     late_share = (sum(1 for m in late_all if m.speaker == peer) / len(late_all)) if late_all else None
 
     # 各自的活跃时段
@@ -1146,7 +1153,7 @@ def dimension_latenight(messages: Sequence[Message], me: str, peer: str) -> Dime
         SubMetric("peer_late_rate", "TA 的深夜消息占比", p_late_rate,
                   None,  # 深夜多寡本身不分好坏，只做描述，不参与打分
                   f"{p_late_rate * 100:.0f}%" if p_late_rate is not None else "—",
-                  note=f"{LATE_NIGHT_START}:00–{LATE_NIGHT_END}:00"),
+                  note=LATE_NIGHT_LABEL),
         SubMetric("me_late_rate", "你的深夜消息占比", m_late_rate,
                   None, f"{m_late_rate * 100:.0f}%" if m_late_rate is not None else "—"),
         SubMetric("late_share", "深夜时段里 TA 的发言占比", late_share,
@@ -1158,7 +1165,7 @@ def dimension_latenight(messages: Sequence[Message], me: str, peer: str) -> Dime
     ]
 
     evidence: list[Evidence] = []
-    late_peer = [m for m in peer_msgs if is_late(hour_of(m))]
+    late_peer = [m for m in peer_msgs if is_late_night(hour_of(m))]
     for m in late_peer[:3]:
         evidence.append(Evidence(peer, m.timestamp, m.text, "TA 的深夜消息"))
 
@@ -1168,7 +1175,7 @@ def dimension_latenight(messages: Sequence[Message], me: str, peer: str) -> Dime
         summary = "整段记录里没有深夜消息。"
     else:
         summary = (
-            f"深夜（{LATE_NIGHT_START}:00–{LATE_NIGHT_END}:00）共 {len(late_all)} 条，"
+            f"深夜（{LATE_NIGHT_LABEL}）共 {len(late_all)} 条，"
             f"其中 TA 占 {late_share * 100:.0f}%。TA 最活跃在{peak_hours(peer_msgs)}，"
             f"你最活跃在{peak_hours(me_msgs)}。"
         )
