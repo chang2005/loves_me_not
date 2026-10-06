@@ -75,9 +75,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     _say("")
 
     # 2. 定人
-    if not args.me and not args.peer:
+    assumed_me = not args.me
+    if assumed_me and not args.peer:
         _say("提示：你没有指定 --me，下面按「首次出现的说话人」分配，"
-             "如果反了请用 --me/--peer 明确指定。")
+             "如果反了请用 --me/--peer 明确指定。报告顶部也会提示这一点。")
     try:
         me, peer = metrics.choose_pair(conv, args.me, args.peer)
     except ValueError as exc:
@@ -101,7 +102,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     out_path = Path(args.output) if args.output else Path("out") / "report.html"
     try:
         written = report.write_report(
-            out_path, analysis, result, conv.report, do_redact=args.redact
+            out_path, analysis, result, conv.report,
+            do_redact=args.redact, assumed=assumed_me,
         )
     except OSError as exc:
         return _fail(f"写入报告失败：{exc}")

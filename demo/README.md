@@ -7,7 +7,7 @@
 |---|---|---|
 | [`report-warm.html`](report-warm.html) | `samples/sample_wechat_warm.txt`（互相都在投入的 29 天） | 63 / 100 · 有点平淡了（样本偏少，已收缩） |
 | [`report-cooling.html`](report-cooling.html) | `samples/sample_wechat_cooling.txt`（从热到冷的 203 天） | 54 / 100 · 已经在变淡 |
-| [`report-cooling-redacted.html`](report-cooling-redacted.html) | 同上，加了 `--redact` | 敏感串打码版；合成数据里没有手机号，所以内容与上表一致 |
+| [`report-csv.html`](report-csv.html) | `samples/sample_memotrace.csv`（留痕风格 CSV） | 56 / 100 · 有点平淡了 |
 | `report-*.json` | 机器可读的完整结果 | 维度分、权重、贡献、分段趋势、证据都在里面 |
 
 重新生成：
@@ -16,6 +16,12 @@
 python -m loves_me_not analyze "samples/sample_wechat_cooling.txt" \
     --me "我" --peer "阿澈" -o demo/report-cooling.html --json demo/report-cooling.json
 ```
+
+> 想看「样本不足」长什么样？把 `samples/sample_tiny.txt` 跑一遍即可
+> （只有 5 条消息）：报告顶部会出现黄色横幅，等级直接显示「样本不足，无法给结论」。
+>
+> 想试脱敏：给命令加上 `--redact`。合成数据里没有手机号之类的串，
+> 所以输出内容与不加时一致；换成你自己的记录就会看到打码效果。
 
 ## 看报告时建议留意这几处
 

@@ -123,6 +123,10 @@ class ScorePart:
     used: dict[str, float] = field(default_factory=dict)      # 维度 → 归一化权重
     skipped: list[str] = field(default_factory=list)          # 被剔除的维度 key
     contributions: dict[str, float] = field(default_factory=dict)  # 维度 → 分数贡献（0–100）
+    #: 维度 → 本次实际采用的 0–1 分数。
+    #: 必须记下来：双向视角在只有一方可得时会取那一方的分数，
+    #: 事后用 ``dim.score_me`` 反推会拿到 ``None`` 并算错。
+    scores_used: dict[str, float] = field(default_factory=dict)
 
     @property
     def available(self) -> bool:
@@ -180,6 +184,7 @@ def _score_part(
     used: dict[str, float] = {}
     skipped: list[str] = []
     contributions: dict[str, float] = {}
+    scores_used: dict[str, float] = {}
     denom = 0.0
 
     for key, w in weights.items():
@@ -199,6 +204,7 @@ def _score_part(
         used[key] = w
         denom += w
         contributions[key] = score * 100.0
+        scores_used[key] = score
 
     if denom <= 0:
         return ScorePart(name=name, score=None, used={}, skipped=skipped)
@@ -211,6 +217,7 @@ def _score_part(
         used=normalized,
         skipped=skipped,
         contributions={k: contributions[k] * normalized[k] for k in used},
+        scores_used=scores_used,
     )
 
 
@@ -507,8 +514,7 @@ def explain(result: ScoreResult, analysis: Analysis) -> str:
             continue
         lines.append(f"【{title}】{part.score:.1f} / 100")
         for k, w in sorted(part.used.items(), key=lambda kv: -kv[1]):
-            dim = analysis.dimensions[k]
-            dim_score = dim.score_peer if part.name != "me" else dim.score_me
+            dim_score = part.scores_used.get(k, 0.0)
             lines.append(
                 f"  {label_of[k]:<12} 维度分 {dim_score * 100:5.1f} × 权重 {w * 100:4.1f}%"
                 f" = 贡献 {part.contributions[k]:5.2f}"

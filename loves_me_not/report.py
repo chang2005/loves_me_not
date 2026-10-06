@@ -439,7 +439,7 @@ def render_trends(analysis: Analysis, periods: Sequence[PeriodStat]) -> str:
 # 各个区块
 # --------------------------------------------------------------------------- #
 
-def render_verdict(result: ScoreResult, analysis: Analysis) -> str:
+def render_verdict(result: ScoreResult, analysis: Analysis, *, assumed: bool = False) -> str:
     """第一屏：大字直白给结论。"""
     banner = ""
     if result.insufficient:
@@ -449,6 +449,16 @@ def render_verdict(result: ScoreResult, analysis: Analysis) -> str:
             f"<span>能读到的有效消息只有 <b>{analysis.total_real}</b> 条"
             f"（{analysis.active_days} 天有对话，跨度 {analysis.days_span} 天）。"
             "下面的分数已向中间值收缩，<b>不足以作为结论</b>，请只当作一次自我观察的起点。</span>"
+            "</div>"
+        )
+    if assumed:
+        banner += (
+            '<div class="banner" style="background:#fdf1f3;border-color:#ecc9d3;color:#8a5566">'
+            "<strong>⚠ 请先确认「我」是谁</strong>"
+            f"<span>你没有指定 <code>--me</code>，报告按文件里说话人出现的先后顺序，"
+            f"把 <b>{esc(analysis.me)}</b> 当成了「我」、<b>{esc(analysis.peer)}</b> 当成了「TA」。"
+            "如果搞反了，整份报告的结论会完全颠倒——"
+            "请用 <code>--me \"你的昵称\" --peer \"TA的昵称\"</code> 重新生成一次。</span>"
             "</div>"
         )
 
@@ -597,8 +607,11 @@ def render_breakdown(result: ScoreResult, analysis: Analysis) -> str:
             return f'<div class="bd"><h4>{esc(title)}</h4><p class="faint tiny">无可用维度。</p></div>'
         rows = []
         for k, w in sorted(part.used.items(), key=lambda kv: -kv[1]):
-            dim = analysis.dimensions[k]
-            dim_score = dim.score_peer if part.name != "me" else dim.score_me
+            # 用打分时真正采用的分数，而不是事后反推——
+            # 双向视角会在只有一方可得时借用那一方的分数。
+            dim_score = part.scores_used.get(k)
+            if dim_score is None:
+                dim_score = 0.0
             rows.append(
                 f"<tr><td>{esc(labels[k])}</td>"
                 f"<td class='num'>{dim_score * 100:.0f}</td>"
@@ -838,8 +851,13 @@ footer p {{ margin: 0 0 .5em; }}
 # 组装
 # --------------------------------------------------------------------------- #
 
-def build_html(analysis: Analysis, result: ScoreResult, conv_report=None) -> str:
-    """生成完整的单文件 HTML。"""
+def build_html(analysis: Analysis, result: ScoreResult, conv_report=None,
+               *, assumed: bool = False) -> str:
+    """生成完整的单文件 HTML。
+
+    ``assumed=True`` 表示「我」是自动推断的（用户没给 ``--me``），
+    报告会显著提示这一点——搞反了会让结论整体颠倒。
+    """
     generated = datetime.now().strftime("%Y-%m-%d %H:%M")
     group_notice = ""
     if analysis.is_group:
@@ -863,7 +881,7 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None) -> str
 <body>
 <div class="wrap">
 
-  {render_verdict(result, analysis)}
+  {render_verdict(result, analysis, assumed=assumed)}
 
   <section>
     <h2>双方投入度</h2>
@@ -948,18 +966,20 @@ def build_html(analysis: Analysis, result: ScoreResult, conv_report=None) -> str
 
 
 def write_report(path: str | Path, analysis: Analysis, result: ScoreResult,
-                 conv_report=None, *, do_redact: bool = False) -> Path:
+                 conv_report=None, *, do_redact: bool = False,
+                 assumed: bool = False) -> Path:
     """把报告写到磁盘，返回实际路径。
 
     ``do_redact=True`` 时先对报告中所有原始文本做脱敏（手机号等），
     注意这会在传入的对象上就地生效。
+    ``assumed=True`` 表示「我」的身份是自动推断的，报告会提示核对。
     """
     if do_redact:
         _apply_redaction(analysis, result)
     p = Path(path)
     if p.parent and not p.parent.exists():
         p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(build_html(analysis, result, conv_report), encoding="utf-8")
+    p.write_text(build_html(analysis, result, conv_report, assumed=assumed), encoding="utf-8")
     return p
 
 

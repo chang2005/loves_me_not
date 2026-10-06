@@ -242,6 +242,42 @@ class TestScoring(unittest.TestCase):
         self.assertIn("总分", text)
         self.assertIn("权重", text)
 
+    def test_swapped_subject_does_not_crash(self):
+        """回归：当说话人顺序反过来（自动选人），双向视角会借用一方的分数。
+
+        早期版本在报告里事后反推维度分，遇到 ``score_me is None`` 会直接
+        TypeError 崩掉。这里锁住这个行为。
+        """
+        for me, peer in (("我", "阿澈"), ("阿澈", "我")):
+            conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+            analysis = metrics.analyze(conv, me, peer)
+            result = scoring.score(analysis)
+            html = report.build_html(analysis, result, conv.report)
+            self.assertIn("分数是怎么算出来的", html)
+            scoring.explain(result, analysis)
+
+    def test_scores_used_matches_contributions(self):
+        """每个维度的贡献必须等于「采用分数 × 归一化权重」，账要能对上。"""
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        for part in (result.peer, result.me, result.pair):
+            for k, w in part.used.items():
+                expected = part.scores_used[k] * 100.0 * w
+                self.assertAlmostEqual(part.contributions[k], expected, places=6)
+
+    def test_pair_falls_back_to_single_side(self):
+        """只有一方可得分的维度，双向视角不该被不存在的 0 拉平。"""
+        conv = parser.parse_file(SAMPLES / "sample_wechat_cooling.txt")
+        analysis = metrics.analyze(conv, "我", "阿澈")
+        result = scoring.score(analysis)
+        pair = result.pair.scores_used
+        peer = result.peer.scores_used
+        me = result.me.scores_used
+        for key in ("ending", "latenight"):
+            if key in pair and key not in me and key in peer:
+                self.assertAlmostEqual(pair[key], peer[key], places=6)
+
 
 class TestRedaction(unittest.TestCase):
     def test_phone_redacted(self):
@@ -310,6 +346,16 @@ class TestReport(unittest.TestCase):
         result = scoring.score(analysis)
         html = report.build_html(analysis, result, conv.report)
         self.assertIn("样本不足", html)
+
+    def test_assumed_subject_warning(self):
+        """没给 --me 时，报告必须显著提示「我」是推断出来的。"""
+        conv = parser.parse_file(SAMPLES / "sample_memotrace.csv")
+        analysis = metrics.analyze(conv, "阿澈", "我")
+        result = scoring.score(analysis)
+        warn_html = report.build_html(analysis, result, conv.report, assumed=True)
+        calm_html = report.build_html(analysis, result, conv.report, assumed=False)
+        self.assertIn("请先确认「我」是谁", warn_html)
+        self.assertNotIn("请先确认「我」是谁", calm_html)
 
     def test_na_dimensions_rendered_not_as_zero(self):
         conv = parser.parse_file(SAMPLES / "sample_tiny.txt")
