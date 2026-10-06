@@ -218,6 +218,41 @@ class TestCsv(unittest.TestCase):
             parse_string("a\nb\nc\n", fmt="csv")
 
 
+    def test_sample_files_all_parse(self):
+        """samples/ 下每个文件都必须能被解析——它们是文档与 demo 的来源。"""
+        files = sorted(SAMPLES.glob("sample_*"))
+        self.assertGreaterEqual(len(files), 5)
+        for f in files:
+            with self.subTest(file=f.name):
+                conv = parse_file(f)
+                self.assertGreater(len(conv.messages), 0)
+                self.assertTrue(conv.speakers)
+
+
+class TestWechatPcPaste(unittest.TestCase):
+    """微信 PC 端「复制」出来的格式：``昵称  日期 时间``（两个空格）。"""
+
+    def test_parses_fully(self):
+        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        self.assertEqual(set(conv.speakers), {"阿澈", "我"})
+        self.assertEqual(conv.messages[0].speaker, "阿澈")
+        self.assertEqual(conv.messages[0].text, "今天加班到好晚")
+        self.assertEqual(conv.messages[0].timestamp, datetime(2023, 11, 5, 22, 14, 3))
+
+    def test_retracted_message_is_system(self):
+        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        self.assertEqual(sum(1 for m in conv.messages if m.is_system), 1)
+
+    def test_no_text_leaked_into_speaker_names(self):
+        """正文绝不能被当成昵称——这会静默毁掉整份报告。"""
+        conv = parse_file(SAMPLES / "sample_wechat_pc_paste.txt")
+        for m in conv.messages:
+            self.assertIn(m.speaker, {"阿澈", "我"},
+                          f"出现了非预期说话人：{m.speaker!r}")
+            self.assertNotIn("辛苦", m.speaker)
+            self.assertNotIn("今天", m.speaker)
+
+
 class TestSampleFiles(unittest.TestCase):
     def test_cooling_sample_parses(self):
         conv = parse_file(SAMPLES / "sample_wechat_cooling.txt")

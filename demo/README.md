@@ -9,6 +9,7 @@
 | [`report-cooling.html`](report-cooling.html) | `samples/sample_wechat_cooling.txt`（从热到冷的 203 天） | 54 / 100 · 已经在变淡 |
 | [`report-csv.html`](report-csv.html) | `samples/sample_memotrace.csv`（留痕风格 CSV） | 56 / 100 · 有点平淡了 |
 | [`report-insufficient-sample.html`](report-insufficient-sample.html) | `samples/sample_tiny.txt`（只有 5 条消息） | **样本不足，无法给结论**——8 个维度全部标 N/A |
+| [`report-pc-paste.html`](report-pc-paste.html) | `samples/sample_wechat_pc_paste.txt`（微信 PC 端复制格式，33 条） | 51 / 100 · 已经在变淡（可信度低，已加警示） |
 | `report-*.json` | 机器可读的完整结果 | 维度分、权重、贡献、分段趋势、证据都在里面 |
 
 重新生成：
