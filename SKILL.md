@@ -45,6 +45,21 @@ python -m loves_me_not analyze "path/to/chat.txt" --me "我" --redact -o out/rep
 
 零第三方依赖，Python 3.9+ 即可运行（仅标准库）。
 
+### 可选的旁路命令（不影响上面的默认流程）
+
+```bash
+python -m loves_me_not balance "chat.json" --me "我" --peer "TA"   # 对称性诊断，不进总分
+python -m loves_me_not context "chat.json" digest                  # 取数据摘要
+python -m loves_me_not context "chat.json" query --keyword "好消息" --expected-digest <摘要>
+python -m loves_me_not context "chat.json" conflict                # 负向词密度窗口
+python -m loves_me_not context "chat.json" repair                  # 长沉默后的重连
+python -m loves_me_not memory status                               # 默认未启用、不建库
+```
+
+`analyze --balance` 可在原有报告流程里顺带输出对称性诊断（JSON 多一个 `balance` 键，
+HTML 版式不变）。`memory` 是需 `enable --confirm` 才建库的可选本地存储，
+**不要主动替用户开启**；用户没说要记，就别调它。完整参数见 README「扩展命令」。
+
 ## 输入格式与解析
 
 `parse_file()` 先按扩展名、再按内容特征判断走哪条路径：
@@ -267,7 +282,10 @@ loves_me_not/
 ├── visuals.py    # 热力图 / 词云 / 画像 / 时段与月度柱状图（内联 SVG）
 ├── scoring.py    # 权重、等级、可信度、安慰文案
 ├── report.py     # 单文件 HTML / JSON 输出
-└── __main__.py   # CLI：analyze / inspect
+├── balance.py    # 扩展：对称性诊断（独立指标，不进总分）
+├── context.py    # 扩展：关键窗口 / 有预算上下文检索 / 数据摘要
+├── memory.py     # 扩展：需同意的本地记忆（默认不建库）
+└── __main__.py   # CLI：analyze / inspect / balance / context / memory
 ```
 
 ## 常见问题排查

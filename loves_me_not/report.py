@@ -2350,8 +2350,12 @@ def write_report(path: str | Path, analysis: Analysis, result: ScoreResult,
     return p
 
 
-def build_json(analysis: Analysis, result: ScoreResult) -> str:
-    """输出机器可读的结果（便于二次开发 / 自查）。"""
+def build_json(analysis: Analysis, result: ScoreResult, *, balance_obj=None) -> str:
+    """输出机器可读的结果（便于二次开发 / 自查）。
+
+    ``balance_obj`` 是 :func:`loves_me_not.balance.compute_balance` 的可选结果；
+    只有 ``analyze --balance`` 时才写入，默认输出与扩展前逐字段一致。
+    """
     payload = {
         "me": analysis.me,
         "peer": analysis.peer,
@@ -2442,6 +2446,8 @@ def build_json(analysis: Analysis, result: ScoreResult) -> str:
         "disclaimer": result.disclaimer,
         **_json_extras(analysis, result),
     }
+    if balance_obj is not None:
+        payload["balance"] = balance_obj.to_dict()
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 

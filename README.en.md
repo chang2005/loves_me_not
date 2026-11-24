@@ -12,13 +12,14 @@ computed **entirely on your machine**, and renders a shareable **single-file HTM
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-2fa37a)](#-installation)
 [![Local Only](https://img.shields.io/badge/data-local%20only-e1487f)](#-caveats)
-[![Tests](https://img.shields.io/badge/tests-238%20passed-2fa37a)](#-tests)
+[![Tests](https://img.shields.io/badge/tests-263%20passed-2fa37a)](#-tests)
 [![License](https://img.shields.io/badge/license-MIT-8a4fd8)](LICENSE)
 
 [中文](README.md) · **English**
 
 [Features](#-features) · [Install](#-installation) · [Usage](#-usage) ·
-[Scoring](#-scoring) · [Report](#-report) · [Caveats](#-caveats)
+[Extensions](#-optional-extension-commands) · [Scoring](#-scoring) ·
+[Report](#-report) · [Caveats](#-caveats)
 
 </div>
 
@@ -128,6 +129,56 @@ See [`samples/`](samples/README.en.md) for concrete examples.
 >   better to drop a few messages than to get the relationship backwards.
 > - **When it can't tell, it errors out.** A web page with no chat data, JSON with no
 >   message array, or a truncated file all raise a clear error instead of inventing a report.
+
+---
+
+## 🧩 Optional extension commands
+
+These are additive side channels built from transferable parts of `goutoujunshi` and
+`she-love-me`. Without calling them, behaviour is identical to the original tool.
+
+### 1. Symmetry diagnostics `balance`
+
+It answers "is this one-sided?" and **never enters the 0–100 total or the HTML layout**.
+
+```bash
+python -m loves_me_not balance "chat.json" --me "Me" --peer "TA" --json out/balance.json
+python -m loves_me_not analyze "chat.json" --me "Me" --peer "TA" --balance \
+    -o out/report.html --json out/result.json   # JSON gains a "balance" key
+```
+
+Four parts: opening initiative 30% / reply speed 20% / reconnection 30% / message volume 20%.
+Below 70% valid weight coverage no 0–10 score is given. **Two people both being cold also
+score high** — this measures balance, not affection.
+
+### 2. Key windows and context `context`
+
+```bash
+python -m loves_me_not context "chat.json" digest
+python -m loves_me_not context "chat.json" query --keyword "good news" \
+    --before 10 --after 10 --max-chars 5000 --expected-digest <digest> --json out/context.json
+python -m loves_me_not context "chat.json" conflict
+python -m loves_me_not context "chat.json" repair
+```
+
+`query` has message-count and character budgets; `--expected-digest` detects input drift.
+These are **locators**, not emotional conclusions.
+
+### 3. Local relationship memory `memory` (no database by default)
+
+```bash
+python -m loves_me_not memory status
+python -m loves_me_not memory enable --confirm
+python -m loves_me_not memory apply --json '{"scope":"event","subject_id":"TA",
+  "field":"mentioned good news","value":"2025-08-10","source_type":"loves_me_not","confidence":"high"}'
+python -m loves_me_not memory show
+python -m loves_me_not memory undo
+python -m loves_me_not memory revoke --delete --confirm
+```
+
+Data lives under `%LOCALAPPDATA%/loves-me-not/` (override with `LOVES_ME_NOT_MEMORY_DIR`),
+permissions 0700/0600, no network, no third-party dependency, and nothing is created
+until `enable --confirm`.
 
 ---
 
@@ -262,7 +313,7 @@ and images, voice messages and stickers can't be analysed — they only count as
 python -m unittest discover -s tests -v
 ```
 
-**238 tests.** Some of them are **guardrails protecting the product's promises** —
+**263 tests** (245 core + 18 extensions). Some of them are **guardrails protecting the product's promises** —
 don't delete these when changing core logic:
 
 - Dimensions with no information must be removed, not scored as 0
@@ -283,6 +334,9 @@ don't delete these when changing core logic:
 - Inline scripts must pass `node --check`; the package must contain no network or
   subprocess dependencies
 
+The 18 extension tests cover symmetry weights and low-coverage refusal, context budgets
+and the digest guard, the memory consent gate and undo, and Chinese/English doc alignment.
+
 ---
 
 ## 📂 Project layout
@@ -293,7 +347,10 @@ loves-me-not/
 ├── README.md / README.en.md         # Chinese / English docs
 ├── docs/                            # screenshots used by the READMEs
 ├── loves_me_not/
-│   ├── __main__.py          # CLI: analyze / inspect
+│   ├── __main__.py          # CLI: analyze / inspect / balance / context / memory
+│   ├── balance.py           # extension: symmetry diagnosis (independent, no score change)
+│   ├── context.py           # extension: key-window sampling + bounded context retrieval
+│   ├── memory.py            # extension: consent-gated local memory (no database by default)
 │   ├── parser.py            # tolerant parsing: txt / csv → Message[], plus format detection
 │   ├── structured.py        # JSON / embedded-web-data parsing (tolerant field names)
 │   ├── lexicon.py           # sentiment lexicon + pet names + question words
@@ -305,7 +362,7 @@ loves-me-not/
 │   └── report.py            # single-file HTML / JSON output
 ├── samples/                 # synthetic sample data (not real logs)
 ├── demo/                    # finished reports generated from those samples
-└── tests/                   # 238 unit tests
+└── tests/                   # 263 unit tests (245 core + 18 extensions)
 ```
 
 `demo/` holds finished reports generated from **synthetic data** — double-click to open:

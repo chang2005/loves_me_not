@@ -5,6 +5,9 @@
 * ``analyze`` —— 解析 → 分析 → 打分 → 生成单文件 HTML 报告
 * ``inspect`` —— 只做解析，把识别到的说话人、消息数、时间范围打印出来
   （**强烈建议先跑这个**：输入错了，分数就没有意义）
+* ``balance`` —— 独立的投入对称性诊断（不参与总分）
+* ``context`` —— 关键窗口采样与有预算的上下文检索
+* ``memory`` —— 可选、需显式同意的本地关系记忆（默认不建库）
 
 设计约定：出错时返回非零退出码并打印可操作的提示，绝不悄悄生成一份
 基于错误输入的「看起来正常」的报告。
@@ -13,10 +16,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from . import __version__, metrics, parser, report, scoring
+from . import __version__, balance, context, metrics, parser, report, scoring
 
 
 # --------------------------------------------------------------------------- #
@@ -98,6 +102,11 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     result = scoring.score(analysis)
 
+    # 3.5 可选的对称性诊断（旁路指标，绝不改总分）
+    balance_result = None
+    if args.balance:
+        balance_result = balance.compute_balance(conv, analysis, me, peer)
+
     # 4. 报告
     out_path = Path(args.output) if args.output else Path("out") / "report.html"
     try:
@@ -115,7 +124,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.json:
         try:
             Path(args.json).write_text(
-                report.build_json(analysis, result), encoding="utf-8"
+                report.build_json(analysis, result, balance_obj=balance_result),
+                encoding="utf-8",
             )
         except OSError as exc:
             return _fail(f"写入 JSON 失败：{exc}")
@@ -141,6 +151,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         _say("  主要拖后腿：" + "、".join(
             f"{l}({s * 100:.0f})" for l, s, _w in result.top_negative))
 
+    if balance_result is not None:
+        _say("")
+        _say(balance.format_text(balance_result, me, peer))
+
     if analysis.caveats:
         _say("")
         _say("数据说明：")
@@ -153,6 +167,116 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.json:
         _say(f"JSON 结果：{Path(args.json).resolve()}")
     return 0
+
+
+# --------------------------------------------------------------------------- #
+# balance
+# --------------------------------------------------------------------------- #
+
+def _resolve_pair(conv, me: str | None, peer: str | None) -> tuple[str, str]:
+    try:
+        pair = metrics.choose_pair(conv, me, peer)
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+    if pair[0] == pair[1]:
+        raise ValueError("「我」和「TA」不能是同一个人，请检查 --me/--peer。")
+    return pair
+
+
+def cmd_balance(args: argparse.Namespace) -> int:
+    try:
+        conv = parser.parse_file(args.input, fmt=args.format)
+    except parser.ParseError as exc:
+        return _fail(str(exc))
+    try:
+        me, peer = _resolve_pair(conv, args.me, args.peer)
+    except ValueError as exc:
+        return _fail(str(exc))
+    try:
+        analysis = metrics.analyze(conv, me, peer)
+    except ValueError as exc:
+        return _fail(str(exc))
+
+    result = balance.compute_balance(conv, analysis, me, peer)
+    _say(parser.describe(conv))
+    _say("")
+    _say(balance.format_text(result, me, peer))
+    if args.json:
+        try:
+            Path(args.json).write_text(
+                json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except OSError as exc:
+            return _fail(f"写入 JSON 失败：{exc}")
+        _say(f"JSON 结果：{Path(args.json).resolve()}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# context
+# --------------------------------------------------------------------------- #
+
+def cmd_context(args: argparse.Namespace) -> int:
+    try:
+        conv = parser.parse_file(args.input, fmt=args.format)
+    except parser.ParseError as exc:
+        return _fail(str(exc))
+
+    msgs = conv.messages
+    try:
+        if args.mode == "digest":
+            payload = {
+                "digest": context.messages_digest(msgs),
+                "messages": len(msgs),
+                "note": "把这个 digest 传给 query 模式的 --expected-digest，可防止输入被替换。",
+            }
+        elif args.mode == "conflict":
+            win = context.find_conflict_window(msgs, window=args.window)
+            payload = context.describe_windows(
+                [win] if win else [], messages=msgs, include_messages=True
+            )
+        elif args.mode == "repair":
+            wins = context.find_repair_moments(msgs)
+            payload = context.describe_windows(
+                wins[:args.limit], messages=msgs, include_messages=True
+            )
+        else:
+            payload = context.query_context(
+                msgs,
+                keyword=args.keyword,
+                speaker=args.speaker,
+                since=args.since,
+                until=args.until,
+                before=args.before,
+                after=args.after,
+                max_matches=args.max_matches,
+                max_messages=args.max_messages,
+                max_chars=args.max_chars,
+                expected_digest=args.expected_digest,
+            )
+    except context.ContextError as exc:
+        return _fail(str(exc))
+
+    text = json.dumps(payload, ensure_ascii=False, indent=2)
+    _say(text[:6000])
+    if len(text) > 6000:
+        _say(f"...（已截断显示，共 {len(text)} 字符）")
+    if args.json:
+        try:
+            Path(args.json).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            return _fail(f"写入 JSON 失败：{exc}")
+        _say(f"JSON 结果：{Path(args.json).resolve()}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# memory（可选旁路，默认不建库）
+# --------------------------------------------------------------------------- #
+
+def cmd_memory(args: argparse.Namespace) -> int:
+    from . import memory  # 延迟导入：不用记忆功能时连 sqlite3 都不碰
+    return memory.main(args.memory_args or ["status"])
 
 
 # --------------------------------------------------------------------------- #
@@ -185,7 +309,44 @@ def build_parser() -> argparse.ArgumentParser:
                      help="强制指定格式（默认自动判断；json/html 走结构化解析）")
     ana.add_argument("--redact", action="store_true",
                      help="对报告中的手机号、身份证号等敏感串做打码（昵称保留）")
+    ana.add_argument("--balance", action="store_true",
+                     help="附带输出独立的投入对称性诊断（不改总分、不改报告版式）")
     ana.set_defaults(func=cmd_analyze)
+
+    bal = sub.add_parser("balance", help="独立诊断双方投入是否对等（不影响总分）")
+    bal.add_argument("input", help="聊天记录文件")
+    bal.add_argument("--me", help="「我」的昵称")
+    bal.add_argument("--peer", help="「TA」的昵称")
+    bal.add_argument("--format", choices=("auto", "text", "csv", "json", "html"), default="auto")
+    bal.add_argument("--json", help="把对称性诊断写入 JSON 文件")
+    bal.set_defaults(func=cmd_balance)
+
+    ctx = sub.add_parser("context", help="查关键窗口 / 按关键词取有预算的上下文")
+    ctx.add_argument("input", help="聊天记录文件")
+    ctx.add_argument("mode", nargs="?", default="query",
+                     choices=("query", "conflict", "repair", "digest"),
+                     help="query（默认）/ conflict / repair / digest")
+    ctx.add_argument("--keyword", help="query 模式：关键词（不区分大小写）")
+    ctx.add_argument("--speaker", help="query 模式：只看某位说话人")
+    ctx.add_argument("--since", help="query 模式：起始时间（ISO 8601）")
+    ctx.add_argument("--until", help="query 模式：结束时间（ISO 8601）")
+    ctx.add_argument("--before", type=int, default=10, help="锚点前取几条（默认 10）")
+    ctx.add_argument("--after", type=int, default=10, help="锚点后取几条（默认 10）")
+    ctx.add_argument("--max-matches", type=int, default=5, help="最多取几个锚点（默认 5）")
+    ctx.add_argument("--max-messages", type=int, default=100, help="最多返回多少条（默认 100）")
+    ctx.add_argument("--max-chars", type=int, default=20000, help="最多返回多少字符（默认 20000）")
+    ctx.add_argument("--expected-digest", help="期望的数据摘要，用于防止输入已被替换")
+    ctx.add_argument("--window", type=int, default=100, help="conflict 模式的滑窗宽度")
+    ctx.add_argument("--limit", type=int, default=10, help="repair 模式最多显示几段")
+    ctx.add_argument("--format", choices=("auto", "text", "csv", "json", "html"), default="auto")
+    ctx.add_argument("--json", help="把查询结果写入 JSON 文件")
+    ctx.set_defaults(func=cmd_context)
+
+    mem = sub.add_parser("memory", help="可选的本地关系记忆（默认不启用、不建库）")
+    mem.add_argument("memory_args", nargs=argparse.REMAINDER,
+                     help="子命令与参数原样透传，例如：memory status、"
+                          "memory enable --confirm、memory apply --json '{...}'")
+    mem.set_defaults(func=cmd_memory)
     return p
 
 

@@ -12,13 +12,13 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-2fa37a)](#-安装)
 [![Local Only](https://img.shields.io/badge/数据-仅本地处理-e1487f)](#-注意事项)
-[![Tests](https://img.shields.io/badge/tests-245%20passed-2fa37a)](#-测试)
+[![Tests](https://img.shields.io/badge/tests-263%20passed-2fa37a)](#-测试)
 [![License](https://img.shields.io/badge/license-MIT-8a4fd8)](LICENSE)
 
 **中文** · [English](README.en.md)
 
-[功能](#-功能) · [安装](#-安装) · [使用](#-使用) · [评分](#-评分) ·
-[报告](#-报告) · [注意事项](#-注意事项)
+[功能](#-功能) · [安装](#-安装) · [使用](#-使用) · [扩展命令](#-扩展命令可选默认路径不受影响) ·
+[评分](#-评分) · [报告](#-报告) · [注意事项](#-注意事项)
 
 </div>
 
@@ -119,6 +119,59 @@ python -m loves_me_not analyze "path/to/chat.txt" \
 >   而不是算成「对方说了话」——宁可少几条，也不能把关系算反。
 > - **认不出来就报错。** 网页里没有聊天数据、JSON 里没有消息数组、
 >   文件被截断，一律明确报错，不会编一份出来。
+
+---
+
+## 🧩 扩展命令（可选，默认路径不受影响）
+
+这三个命令是在原有 `inspect` / `analyze` 之上**叠加**的旁路能力，来自
+`goutoujunshi` 与 `she-love-me` 的可迁移部分；不调用它们时，行为与扩展前一致。
+
+### 1. 投入对称性诊断 `balance`
+
+回答「是不是单方面在推」，**不参与 0–100 总分，也不改 HTML 报告版式**。
+
+```bash
+python -m loves_me_not balance "chat.json" --me "我" --peer "TA" --json out/balance.json
+python -m loves_me_not analyze "chat.json" --me "我" --peer "TA" --balance \
+    -o out/report.html --json out/result.json   # 顺带输出，JSON 多一个 balance 字段
+```
+
+四项：开口主动性 30% / 回复速度 20% / 断档后重连 30% / 消息量 20%，
+用 `2×min/(left+right)` 算对称度（双方互换不变），样本不够就剔除。
+有效权重覆盖低于 70% 时**不给 0–10 分**，只说明缺什么。
+注意：**两个人一起冷淡也会得到高分**——它衡量对等，不衡量感情。
+
+### 2. 关键窗口与上下文 `context`
+
+```bash
+python -m loves_me_not context "chat.json" digest          # 先取数据摘要
+python -m loves_me_not context "chat.json" query \
+    --keyword "好消息" --before 10 --after 10 --max-chars 5000 \
+    --expected-digest <上一步的摘要> --json out/context.json
+python -m loves_me_not context "chat.json" conflict       # 负向词密度最高的窗口
+python -m loves_me_not context "chat.json" repair         # 长沉默后谁先把话接回来
+```
+
+`query` 有**条数 + 字符双预算**，`--expected-digest` 可防止数据在两次命令之间被替换。
+这些都是**定位工具**，不是情感结论。
+
+### 3. 本地关系记忆 `memory`（默认不建库）
+
+```bash
+python -m loves_me_not memory status                       # 默认：未启用、不建库
+python -m loves_me_not memory enable --confirm             # 必须显式同意
+python -m loves_me_not memory apply --json '{"scope":"event","subject_id":"TA",
+  "field":"提到好消息","value":"2025-08-10","source_type":"loves_me_not","confidence":"high"}'
+python -m loves_me_not memory show
+python -m loves_me_not memory undo                         # 撤销上一次写入
+python -m loves_me_not memory forget-object "TA" --confirm
+python -m loves_me_not memory revoke --delete --confirm    # 彻底删除
+```
+
+数据落在 `%LOCALAPPDATA%/loves-me-not/`（macOS / Linux 见 `memory.memory_dir()`），
+可用 `LOVES_ME_NOT_MEMORY_DIR` 覆盖。目录 0700、文件 0600，**无网络、无第三方依赖**。
+未调用 `enable --confirm` 时，连数据库文件都不会创建。
 
 ---
 
@@ -237,7 +290,7 @@ python -m loves_me_not analyze "path/to/chat.txt" \
 python -m unittest discover -s tests -v
 ```
 
-**245 项**。其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
+**263 项**（核心 245 + 扩展 18）。其中一批是**守住产品承诺的护栏**，改动核心逻辑时不要删：
 
 - 无信息的维度必须剔除，而不是当成 0 分
 - 样本不足必须降级，不得输出强结论；采样不足的指标 `score` 必须是 `None`
@@ -253,6 +306,9 @@ python -m unittest discover -s tests -v
 - 认不出来的 JSON / 网页必须报错，不得猜
 - 内联脚本必须通过 `node --check`；包内不许有任何网络或子进程依赖
 
+扩展命令另有 18 项测试：对称性权重与低覆盖拒绝给分、上下文的双预算与摘要防漂移、
+记忆的同意门控与撤销，以及中英文档结构对齐。
+
 ---
 
 ## 📂 项目结构
@@ -263,7 +319,10 @@ loves-me-not/
 ├── README.md / README.en.md # 中 / 英说明
 ├── docs/                    # README 用的截图
 ├── loves_me_not/
-│   ├── __main__.py          # CLI：analyze / inspect
+│   ├── __main__.py          # CLI：analyze / inspect / balance / context / memory
+│   ├── balance.py           # 扩展：投入对称性诊断（独立，不改总分）
+│   ├── context.py           # 扩展：关键窗口采样 + 有预算的上下文检索
+│   ├── memory.py            # 扩展：需同意的本地关系记忆（默认不建库）
 │   ├── parser.py            # 容错解析：txt / csv → Message[]，含格式识别
 │   ├── structured.py        # JSON / 网页内嵌数据解析（字段名容错）
 │   ├── lexicon.py           # 情感词典 + 亲昵称呼 + 疑问词
@@ -275,7 +334,7 @@ loves-me-not/
 │   └── report.py            # 单文件 HTML / JSON 生成
 ├── samples/                 # 合成示例数据（非真实记录）
 ├── demo/                    # 由示例数据生成的成品报告
-└── tests/                   # 245 项单元测试
+└── tests/                   # 263 项单元测试（原 245 + 扩展 18）
 ```
 
 `demo/` 里是**合成数据**生成的成品报告，双击即开：

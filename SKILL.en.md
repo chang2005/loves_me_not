@@ -49,6 +49,21 @@ python -m loves_me_not analyze "path/to/chat.txt" --me "me" --redact -o out/repo
 
 No third-party dependencies; Python 3.9+ and the standard library are enough.
 
+### Optional side channels (never required by the default flow)
+
+```bash
+python -m loves_me_not balance "chat.json" --me "me" --peer "TA"   # symmetry only; not in the total
+python -m loves_me_not context "chat.json" digest
+python -m loves_me_not context "chat.json" query --keyword "hello" --expected-digest <digest>
+python -m loves_me_not context "chat.json" conflict
+python -m loves_me_not context "chat.json" repair
+python -m loves_me_not memory status                               # disabled; no database created
+```
+
+`analyze --balance` adds a `balance` key to the JSON without changing the HTML layout.
+`memory` requires `enable --confirm` — **do not enable it on the user's behalf**.
+See the README for full arguments.
+
 ## Input formats and parsing
 
 `parse_file()` chooses a path by extension first, then by content:
@@ -303,7 +318,10 @@ loves_me_not/
 ├── visuals.py    # heatmap / word cloud / persona / hour & month charts (inline SVG)
 ├── scoring.py    # weights, tiers, confidence, comfort copy
 ├── report.py     # single-file HTML / JSON output
-└── __main__.py   # CLI: analyze / inspect
+├── balance.py    # extension: symmetry diagnostics (independent of the total)
+├── context.py    # extension: key windows / budgeted context queries / digest
+├── memory.py     # extension: consent-gated local memory (no database by default)
+└── __main__.py   # CLI: analyze / inspect / balance / context / memory
 ```
 
 ## Troubleshooting
